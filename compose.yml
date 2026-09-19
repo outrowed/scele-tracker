@@ -2,7 +2,15 @@ name: scele-course-tracker
 services:
   app:
     build: .
+    image: local/scele-course-tracker:1.0.0
     container_name: scele-course-tracker
+    user: "1002:1002"
+    labels:
+      taruna-kuma.app.docker.name: "SCeLE Course Tracker"
+      taruna-kuma.app.docker.docker_container: "scele-course-tracker"
+      taruna-kuma.app.docker.docker_host_name: "fhai"
+      taruna-kuma.app.docker.interval: "60"
+      taruna-kuma.app.docker.max_retries: "2"
     restart: unless-stopped
     env_file: .env
     environment:
