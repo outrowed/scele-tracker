@@ -1,6 +1,6 @@
 import { load } from 'cheerio';
 import { CookieJar } from 'tough-cookie';
-import { MoodleClient } from '@didactika/moodle-client';
+import { MoodleResponse } from '@didactika/moodle-client';
 import type { Account, Activity, SyncResult } from './types.js';
 
 export const MOODLE = 'https://scele.cs.ui.ac.id';
@@ -81,12 +81,26 @@ export function mergeCalendar(items: Activity[], events: CalendarEvent[], accoun
     if (event.eventtype === 'due' || event.eventtype === 'close') item.dueAt = timestamp(event.timestart);
   }
 }
+const sessions = new Map<string, { session: MoodleSession; credentials: string }>();
 export async function syncSession(account: Account): Promise<SyncResult> {
-  const session = new MoodleSession();
-  await session.login(account);
+  const credentials = JSON.stringify([account.username, account.password]);
+  let cached = sessions.get(account.id);
+  if (!cached || cached.credentials !== credentials) {
+    const session = new MoodleSession();
+    await session.login(account);
+    cached = { session, credentials };
+    sessions.set(account.id, cached);
+  }
+  const session = cached.session;
   const items: Activity[] = [];
   let complete = true;
-  const courses = await session.call<{ courses: Course[] }>('core_course_get_enrolled_courses_by_timeline_classification', { classification: 'all', limit: 0, offset: 0 });
+  let courses: { courses: Course[] };
+  try {
+    courses = await session.call('core_course_get_enrolled_courses_by_timeline_classification', { classification: 'all', limit: 0, offset: 0 });
+  } catch {
+    sessions.delete(account.id);
+    throw new Error('Session expired or course API unavailable');
+  }
   if (!Array.isArray(courses.courses)) throw new Error('Invalid course response');
   for (const course of courses.courses) {
     try {
@@ -119,10 +133,27 @@ export async function syncSession(account: Account): Promise<SyncResult> {
   return { activities: items, complete };
 }
 
+// Keep the library's error parser; its default transport puts tokens in URLs.
+export class TokenClient {
+  constructor(private token: string) {}
+  async call<T>(name: string, args: Record<string, unknown> = {}): Promise<{ data: T }> {
+    const body = new URLSearchParams({ wstoken: this.token, moodlewsrestformat: 'json', wsfunction: name });
+    for (const [key, value] of Object.entries(args)) {
+      if (Array.isArray(value)) value.forEach((entry, index) => body.set(`${key}[${index}]`, String(entry)));
+      else body.set(key, String(value));
+    }
+    const response = await fetch(`${MOODLE}/webservice/rest/server.php`, { method: 'POST', body, redirect: 'error', signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) throw new Error('Moodle API unavailable');
+    return (await MoodleResponse.from<T>(response)).throwOnMoodleError();
+  }
+}
+export function retainSessions(ids: string[]) {
+  for (const id of sessions.keys()) if (!ids.includes(id)) sessions.delete(id);
+}
 type Assignment = { id: number; cmid: number; name: string; intro: string; allowsubmissionsfromdate: number; duedate: number; cutoffdate: number; timelimit?: number };
 type Quiz = { id: number; coursemodule: number; course: number; name: string; intro: string; timeopen: number; timeclose: number; timelimit: number };
 export async function syncToken(account: Account): Promise<SyncResult> {
-  const client = new MoodleClient({ rootURL: MOODLE, token: account.token!, method: 'POST' });
+  const client = new TokenClient(account.token!);
   const site = (await client.call<{ userid: number }>('core_webservice_get_site_info')).data;
   const courses = (await client.call<Course[]>('core_enrol_get_users_courses', { userid: site.userid })).data;
   if (!Array.isArray(courses)) throw new Error('Invalid course response');

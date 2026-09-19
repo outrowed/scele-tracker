@@ -1,5 +1,5 @@
 import { loadAccounts } from './accounts.js';
-import { syncSession, syncToken } from './moodle.js';
+import { syncSession, syncToken, retainSessions } from './moodle.js';
 import type { Activity, SourceStatus } from './types.js';
 
 export function createTracker() {
@@ -8,6 +8,7 @@ export function createTracker() {
   let checked = 0;
   async function sync() {
     const accounts = await loadAccounts();
+    retainSessions(accounts.filter(account => account.mode === 'session').map(account => account.id));
     const activities: Activity[] = [];
     const sources: SourceStatus[] = [];
     for (const account of accounts) {

@@ -1,0 +1,29 @@
+name: scele-course-tracker
+services:
+  app:
+    build: .
+    container_name: scele-course-tracker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MOODLE_ACCOUNTS_FILE: /app/config/accounts.json
+    volumes:
+      - ./config:/app/config:ro
+    networks:
+      proxy:
+        ipv4_address: 192.168.176.51
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+networks:
+  proxy:
+    external: true
+    name: taruna-caddy-proxy
