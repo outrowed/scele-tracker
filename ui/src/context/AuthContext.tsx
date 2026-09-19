@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-type User = { username: string; fullname: string };
+type User = { username: string; fullname: string; role: 'admin' | 'user' };
 const AuthContext = createContext<{ user: User | null; loading: boolean; error: string; logout: () => Promise<void> }>({ user: null, loading: true, error: '', logout: async () => {} });
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

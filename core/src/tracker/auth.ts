@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router, type RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import { XMLParser } from 'fast-xml-parser';
+import { roleFor } from './roles.js';
 import { settings } from './config.js';
 
 const cookie = 'scele_session';
@@ -31,7 +32,10 @@ export function parseIdentity(xml: string) {
   return { username: success.user, fullname: typeof fullname === 'string' ? fullname : success.user };
 }
 export const auth = Router();
-auth.get('/me', (req, res) => res.json({ user: sessionUser(req.cookies[cookie]) }));
+auth.get('/me', async (req, res) => {
+  const user = sessionUser(req.cookies[cookie]);
+  res.json({ user: user ? { ...user, role: await roleFor(user.username) } : null });
+});
 auth.get('/login', (_req, res) => {
   const state = randomBytes(32).toString('hex');
   res.cookie('scele_login', state, { ...options, maxAge: 10 * 60_000 });
