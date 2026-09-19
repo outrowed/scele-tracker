@@ -5,7 +5,7 @@ import { createApp } from '../core/src/app';
 import { settings } from '../core/src/tracker/config';
 import { parseIdentity, sessionUser } from '../core/src/tracker/auth';
 import { parseAccounts } from '../core/src/tracker/accounts';
-import { mergeCalendar, plainText, timestamp, MoodleSession } from '../core/src/tracker/moodle';
+import { mergeCalendar, plainText, timestamp, MoodleSession, TokenClient } from '../core/src/tracker/moodle';
 import type { Activity } from '../core/src/tracker/types';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -67,4 +67,15 @@ describe('accounts and metadata', () => {
     await expect(new MoodleSession().request('/login/index.php')).rejects.toThrow('External');
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+});
+
+it('sends API tokens only in POST bodies with timeout and no redirects', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ userid: 1 }), { status: 200, headers: { 'content-type': 'application/json' } }));
+  vi.stubGlobal('fetch', fetch);
+  await new TokenClient('private-token').call('core_webservice_get_site_info');
+  const [url, options] = fetch.mock.calls[0];
+  expect(url).not.toContain('private-token');
+  expect(options.body.get('wstoken')).toBe('private-token');
+  expect(options.redirect).toBe('error');
+  expect(options.signal).toBeInstanceOf(AbortSignal);
 });
