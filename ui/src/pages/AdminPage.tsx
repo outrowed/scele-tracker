@@ -9,6 +9,7 @@ export default function AdminPage() {
     checkedAt: string | null;
   } | null>(null);
   const [error, setError] = useState('');
+  // Request protected diagnostics when this page mounts; the API enforces the admin role.
   useEffect(() => {
     api<NonNullable<typeof data>>('/api/admin/status')
       .then(setData)

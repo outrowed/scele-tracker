@@ -1,6 +1,7 @@
 import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
 
 export default function SignInPage() {
+  // Read CAS error parameter directly from the browser window URL to display sign-in failures.
   const failed = new URLSearchParams(window.location.search).has('error');
   return (
     <main className="login-layout">
@@ -38,6 +39,7 @@ export default function SignInPage() {
             Sign-in could not be completed. Please try again.
           </p>
         )}
+        {/* Navigates the top-level window to the backend CAS flow, establishing the login state cookie. */}
         <a className="primary-button mt-8 w-full" href="/api/auth/login">
           Continue with UI SSO <ArrowRight size={18} />
         </a>

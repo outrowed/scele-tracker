@@ -10,6 +10,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Discover the server session on mount and publish it to every auth-context consumer.
   useEffect(() => {
     fetch('/api/auth/me')
       .then((response) => {
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((error) => setError(error.message))
       .finally(() => setLoading(false));
   }, []);
+  // Clear the server cookie first; only a successful logout signs out all context consumers.
   async function logout() {
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST' });

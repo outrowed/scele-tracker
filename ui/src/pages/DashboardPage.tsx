@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [course, setCourse] = useState('all');
   const [now, setNow] = useState(Date.now() / 1000);
 
+  // Fetch the shared snapshot (which may trigger server sync) and update this page’s feed.
   async function refresh() {
     setBusy(true);
     setError('');
@@ -34,6 +35,7 @@ export default function DashboardPage() {
     }
   }
 
+  // Load on mount and advance deadline labels each minute; release the timer on unmount.
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => setNow(Date.now() / 1000), 60_000);

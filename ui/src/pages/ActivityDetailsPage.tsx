@@ -7,6 +7,7 @@ export default function ActivityDetailsPage() {
   const { id } = useParams();
   const [item, setItem] = useState<Activity | null>(null);
   const [error, setError] = useState('');
+  // Reload for each route ID; ignore stale responses after navigation or unmount.
   useEffect(() => {
     let active = true;
     setItem(null);
@@ -18,6 +19,7 @@ export default function ActivityDetailsPage() {
       .catch((error) => {
         if (active) setError(error.message);
       });
+    // This guards state updates; it does not cancel the in-flight HTTP request.
     return () => {
       active = false;
     };
@@ -72,6 +74,7 @@ export default function ActivityDetailsPage() {
                   </div>
                 ))}
               </dl>
+              {/* Leave this app in a separate tab using the visitor’s own SCeLE session. */}
               <a
                 className="primary-button mt-7 w-full"
                 href={item.url}
