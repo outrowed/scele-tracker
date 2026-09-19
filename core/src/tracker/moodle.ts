@@ -10,14 +10,38 @@ export function plainText(html: unknown): string {
   $('script, style, iframe, form').remove();
   $('br').replaceWith('\n');
   $('p, div, li').append('\n');
-  return $.text().replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n\n').trim().slice(0, 30_000);
+  return $.text()
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
+    .trim()
+    .slice(0, 30_000);
 }
 export function timestamp(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 }
-function activity(account: Account, kind: Activity['kind'], cmid: number, courseId: number, courseName: string, name: string): Activity {
+function activity(
+  account: Account,
+  kind: Activity['kind'],
+  cmid: number,
+  courseId: number,
+  courseName: string,
+  name: string,
+): Activity {
   if (!Number.isSafeInteger(cmid) || cmid <= 0) throw new Error('Invalid activity ID');
-  return { id: `${account.id}-${kind}-${cmid}`, kind, courseId, courseName: plainText(courseName), name: plainText(name), description: '', url: `${MOODLE}/mod/${kind === 'assignment' ? 'assign' : 'quiz'}/view.php?id=${cmid}`, opensAt: null, dueAt: null, cutoffAt: null, timeLimit: null, source: account.id };
+  return {
+    id: `${account.id}-${kind}-${cmid}`,
+    kind,
+    courseId,
+    courseName: plainText(courseName),
+    name: plainText(name),
+    description: '',
+    url: `${MOODLE}/mod/${kind === 'assignment' ? 'assign' : 'quiz'}/view.php?id=${cmid}`,
+    opensAt: null,
+    dueAt: null,
+    cutoffAt: null,
+    timeLimit: null,
+    source: account.id,
+  };
 }
 
 // Each account owns its cookie jar. Redirects never carry credentials off-site.
@@ -31,8 +55,14 @@ export class MoodleSession {
       if (url.origin !== MOODLE) throw new Error('External Moodle redirect refused');
       const headers = new Headers(options.headers);
       headers.set('cookie', await this.jar.getCookieString(url.href));
-      const response = await fetch(url, { ...options, headers, redirect: 'manual', signal: AbortSignal.timeout(20_000) });
-      for (const cookie of response.headers.getSetCookie()) await this.jar.setCookie(cookie, url.href);
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        redirect: 'manual',
+        signal: AbortSignal.timeout(20_000),
+      });
+      for (const cookie of response.headers.getSetCookie())
+        await this.jar.setCookie(cookie, url.href);
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get('location');
         if (!location) throw new Error('Invalid redirect');
@@ -51,34 +81,76 @@ export class MoodleSession {
     const html = await this.request('/login/index.php');
     const logintoken = load(html)('input[name="logintoken"]').val();
     if (typeof logintoken !== 'string') throw new Error('Unsupported Moodle login');
-    await this.request('/login/index.php', { method: 'POST', body: new URLSearchParams({ username: account.username!, password: account.password!, logintoken }) });
+    await this.request('/login/index.php', {
+      method: 'POST',
+      body: new URLSearchParams({
+        username: account.username!,
+        password: account.password!,
+        logintoken,
+      }),
+    });
     const dashboard = await this.request('/my/');
     const key = dashboard.match(/"sesskey"\s*:\s*"([a-zA-Z0-9]+)"/);
-    if (!key || load(dashboard)('input[name="password"]').length) throw new Error('Moodle authentication failed');
+    if (!key || load(dashboard)('input[name="password"]').length)
+      throw new Error('Moodle authentication failed');
     this.sesskey = key[1];
   }
   async call<T>(methodname: string, args: object): Promise<T> {
-    const text = await this.request(`/lib/ajax/service.php?sesskey=${encodeURIComponent(this.sesskey)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify([{ index: 0, methodname, args }]) });
+    const text = await this.request(
+      `/lib/ajax/service.php?sesskey=${encodeURIComponent(this.sesskey)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify([{ index: 0, methodname, args }]),
+      },
+    );
     const result = JSON.parse(text);
-    if (!Array.isArray(result) || result[0]?.error || !result[0]?.data) throw new Error('Moodle AJAX unavailable');
+    if (!Array.isArray(result) || result[0]?.error || !result[0]?.data)
+      throw new Error('Moodle AJAX unavailable');
     return result[0].data;
   }
 }
 type Course = { id: number; fullname: string };
-type CalendarEvent = { modulename?: string; instance?: number; activityname?: string; name: string; description?: string; eventtype: string; timestart: number; course?: Course };
-export function mergeCalendar(items: Activity[], events: CalendarEvent[], account: Account) {
+type CalendarEvent = {
+  modulename?: string;
+  instance?: number;
+  activityname?: string;
+  name: string;
+  description?: string;
+  eventtype: string;
+  timestart: number;
+  course?: Course;
+};
+export function mergeCalendar(
+  items: Activity[],
+  events: CalendarEvent[],
+  account: Account,
+) {
   for (const event of events) {
-    if (!['assign', 'quiz'].includes(event.modulename || '') || !event.instance || !event.course) continue;
+    if (
+      !['assign', 'quiz'].includes(event.modulename || '') ||
+      !event.instance ||
+      !event.course
+    )
+      continue;
     const kind = event.modulename === 'assign' ? 'assignment' : 'quiz';
     const id = `${account.id}-${kind}-${event.instance}`;
-    let item = items.find(value => value.id === id);
+    let item = items.find((value) => value.id === id);
     if (!item) {
-      item = activity(account, kind, event.instance, event.course.id, event.course.fullname, event.activityname || event.name);
+      item = activity(
+        account,
+        kind,
+        event.instance,
+        event.course.id,
+        event.course.fullname,
+        event.activityname || event.name,
+      );
       items.push(item);
     }
     if (!item.description) item.description = plainText(event.description);
     if (event.eventtype === 'open') item.opensAt = timestamp(event.timestart);
-    if (event.eventtype === 'due' || event.eventtype === 'close') item.dueAt = timestamp(event.timestart);
+    if (event.eventtype === 'due' || event.eventtype === 'close')
+      item.dueAt = timestamp(event.timestart);
   }
 }
 const sessions = new Map<string, { session: MoodleSession; credentials: string }>();
@@ -96,7 +168,10 @@ export async function syncSession(account: Account): Promise<SyncResult> {
   let complete = true;
   let courses: { courses: Course[] };
   try {
-    courses = await session.call('core_course_get_enrolled_courses_by_timeline_classification', { classification: 'all', limit: 0, offset: 0 });
+    courses = await session.call(
+      'core_course_get_enrolled_courses_by_timeline_classification',
+      { classification: 'all', limit: 0, offset: 0 },
+    );
   } catch {
     sessions.delete(account.id);
     throw new Error('Session expired or course API unavailable');
@@ -110,25 +185,51 @@ export async function syncSession(account: Account): Promise<SyncResult> {
         const url = new URL($(element).attr('href') || '', MOODLE);
         const match = url.pathname.match(/^\/mod\/(assign|quiz)\/view\.php$/);
         const cmid = Number(url.searchParams.get('id'));
-        if (url.origin !== MOODLE || !match || !Number.isSafeInteger(cmid) || cmid <= 0) return;
+        if (url.origin !== MOODLE || !match || !Number.isSafeInteger(cmid) || cmid <= 0)
+          return;
         const node = $(element).closest('li.activity, .activity');
         const name = $(element).find('.instancename').clone();
         name.find('.accesshide').remove();
-        const item = activity(account, match[1] === 'assign' ? 'assignment' : 'quiz', cmid, course.id, course.fullname, name.text() || $(element).text());
-        item.description = plainText(node.find('.contentafterlink, .activity-description').first().html());
-        if (!items.some(existing => existing.id === item.id)) items.push(item);
+        const item = activity(
+          account,
+          match[1] === 'assign' ? 'assignment' : 'quiz',
+          cmid,
+          course.id,
+          course.fullname,
+          name.text() || $(element).text(),
+        );
+        item.description = plainText(
+          node.find('.contentafterlink, .activity-description').first().html(),
+        );
+        if (!items.some((existing) => existing.id === item.id)) items.push(item);
       });
-    } catch { complete = false; }
+    } catch {
+      complete = false;
+    }
   }
   // Calendar API supplies structured timestamps without opening/starting activities.
   const now = new Date();
   for (let offset = -3; offset <= 6; offset++) {
     const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
     try {
-      const month = await session.call<{ weeks: { days: { events: CalendarEvent[] }[] }[] }>('core_calendar_get_calendar_monthly_view', { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, courseid: 1, includenavigation: false, mini: false });
+      const month = await session.call<{
+        weeks: { days: { events: CalendarEvent[] }[] }[];
+      }>('core_calendar_get_calendar_monthly_view', {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        courseid: 1,
+        includenavigation: false,
+        mini: false,
+      });
       if (!Array.isArray(month.weeks)) throw new Error('Invalid calendar response');
-      mergeCalendar(items, month.weeks.flatMap(week => week.days.flatMap(day => day.events || [])), account);
-    } catch { complete = false; }
+      mergeCalendar(
+        items,
+        month.weeks.flatMap((week) => week.days.flatMap((day) => day.events || [])),
+        account,
+      );
+    } catch {
+      complete = false;
+    }
   }
   return { activities: items, complete };
 }
@@ -137,12 +238,22 @@ export async function syncSession(account: Account): Promise<SyncResult> {
 export class TokenClient {
   constructor(private token: string) {}
   async call<T>(name: string, args: Record<string, unknown> = {}): Promise<{ data: T }> {
-    const body = new URLSearchParams({ wstoken: this.token, moodlewsrestformat: 'json', wsfunction: name });
+    const body = new URLSearchParams({
+      wstoken: this.token,
+      moodlewsrestformat: 'json',
+      wsfunction: name,
+    });
     for (const [key, value] of Object.entries(args)) {
-      if (Array.isArray(value)) value.forEach((entry, index) => body.set(`${key}[${index}]`, String(entry)));
+      if (Array.isArray(value))
+        value.forEach((entry, index) => body.set(`${key}[${index}]`, String(entry)));
       else body.set(key, String(value));
     }
-    const response = await fetch(`${MOODLE}/webservice/rest/server.php`, { method: 'POST', body, redirect: 'error', signal: AbortSignal.timeout(20_000) });
+    const response = await fetch(`${MOODLE}/webservice/rest/server.php`, {
+      method: 'POST',
+      body,
+      redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
+    });
     if (!response.ok) throw new Error('Moodle API unavailable');
     return (await MoodleResponse.from<T>(response)).throwOnMoodleError();
   }
@@ -150,30 +261,92 @@ export class TokenClient {
 export function retainSessions(ids: string[]) {
   for (const id of sessions.keys()) if (!ids.includes(id)) sessions.delete(id);
 }
-type Assignment = { id: number; cmid: number; name: string; intro: string; allowsubmissionsfromdate: number; duedate: number; cutoffdate: number; timelimit?: number };
-type Quiz = { id: number; coursemodule: number; course: number; name: string; intro: string; timeopen: number; timeclose: number; timelimit: number };
+type Assignment = {
+  id: number;
+  cmid: number;
+  name: string;
+  intro: string;
+  allowsubmissionsfromdate: number;
+  duedate: number;
+  cutoffdate: number;
+  timelimit?: number;
+};
+type Quiz = {
+  id: number;
+  coursemodule: number;
+  course: number;
+  name: string;
+  intro: string;
+  timeopen: number;
+  timeclose: number;
+  timelimit: number;
+};
 export async function syncToken(account: Account): Promise<SyncResult> {
   const client = new TokenClient(account.token!);
-  const site = (await client.call<{ userid: number }>('core_webservice_get_site_info')).data;
-  const courses = (await client.call<Course[]>('core_enrol_get_users_courses', { userid: site.userid })).data;
+  const site = (await client.call<{ userid: number }>('core_webservice_get_site_info'))
+    .data;
+  const courses = (
+    await client.call<Course[]>('core_enrol_get_users_courses', { userid: site.userid })
+  ).data;
   if (!Array.isArray(courses)) throw new Error('Invalid course response');
   const items: Activity[] = [];
   let complete = true;
   for (const course of courses) {
     try {
-      const data = (await client.call<{ courses: { assignments: Assignment[] }[]; warnings?: unknown[] }>('mod_assign_get_assignments', { courseids: [course.id] })).data;
+      const data = (
+        await client.call<{
+          courses: { assignments: Assignment[] }[];
+          warnings?: unknown[];
+        }>('mod_assign_get_assignments', { courseids: [course.id] })
+      ).data;
       if (data.warnings?.length) complete = false;
-      for (const assignment of data.courses.flatMap(value => value.assignments)) {
-        items.push({ ...activity(account, 'assignment', assignment.cmid, course.id, course.fullname, assignment.name), description: plainText(assignment.intro), opensAt: timestamp(assignment.allowsubmissionsfromdate), dueAt: timestamp(assignment.duedate), cutoffAt: timestamp(assignment.cutoffdate), timeLimit: timestamp(assignment.timelimit) });
+      for (const assignment of data.courses.flatMap((value) => value.assignments)) {
+        items.push({
+          ...activity(
+            account,
+            'assignment',
+            assignment.cmid,
+            course.id,
+            course.fullname,
+            assignment.name,
+          ),
+          description: plainText(assignment.intro),
+          opensAt: timestamp(assignment.allowsubmissionsfromdate),
+          dueAt: timestamp(assignment.duedate),
+          cutoffAt: timestamp(assignment.cutoffdate),
+          timeLimit: timestamp(assignment.timelimit),
+        });
       }
-    } catch { complete = false; }
+    } catch {
+      complete = false;
+    }
     try {
-      const data = (await client.call<{ quizzes: Quiz[]; warnings?: unknown[] }>('mod_quiz_get_quizzes_by_courses', { courseids: [course.id] })).data;
+      const data = (
+        await client.call<{ quizzes: Quiz[]; warnings?: unknown[] }>(
+          'mod_quiz_get_quizzes_by_courses',
+          { courseids: [course.id] },
+        )
+      ).data;
       if (data.warnings?.length) complete = false;
       for (const quiz of data.quizzes) {
-        items.push({ ...activity(account, 'quiz', quiz.coursemodule, course.id, course.fullname, quiz.name), description: plainText(quiz.intro), opensAt: timestamp(quiz.timeopen), dueAt: timestamp(quiz.timeclose), timeLimit: timestamp(quiz.timelimit) });
+        items.push({
+          ...activity(
+            account,
+            'quiz',
+            quiz.coursemodule,
+            course.id,
+            course.fullname,
+            quiz.name,
+          ),
+          description: plainText(quiz.intro),
+          opensAt: timestamp(quiz.timeopen),
+          dueAt: timestamp(quiz.timeclose),
+          timeLimit: timestamp(quiz.timelimit),
+        });
       }
-    } catch { complete = false; }
+    } catch {
+      complete = false;
+    }
   }
   return { activities: items, complete };
 }

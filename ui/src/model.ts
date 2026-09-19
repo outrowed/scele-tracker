@@ -1,8 +1,16 @@
 export type Activity = {
-  id: string; kind: 'assignment' | 'quiz'; name: string;
-  courseId: number; courseName: string; description: string; url: string;
-  opensAt: number | null; dueAt: number | null; cutoffAt: number | null;
-  timeLimit: number | null; source?: string;
+  id: string;
+  kind: 'assignment' | 'quiz';
+  name: string;
+  courseId: number;
+  courseName: string;
+  description: string;
+  url: string;
+  opensAt: number | null;
+  dueAt: number | null;
+  cutoffAt: number | null;
+  timeLimit: number | null;
+  source?: string;
 };
 export type Snapshot = {
   activities: Activity[];
@@ -14,7 +22,16 @@ export function status(item: Activity, now = Date.now() / 1000) {
   return 'undated';
 }
 export function dateLabel(value: number | null) {
-  return value ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(value * 1000) + ' WIB' : 'Not available';
+  return value
+    ? new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Jakarta',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(value * 1000) + ' WIB'
+    : 'Not available';
 }
 export function remaining(value: number | null, now = Date.now() / 1000) {
   if (!value) return 'No deadline available';
@@ -24,7 +41,8 @@ export function remaining(value: number | null, now = Date.now() / 1000) {
 }
 export async function api<T>(path: string): Promise<T> {
   const response = await fetch(path);
-  if (response.status === 401) throw new Error('Your session expired. Reload to sign in again.');
+  if (response.status === 401)
+    throw new Error('Your session expired. Reload to sign in again.');
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'Could not load the tracker.');
   return body;

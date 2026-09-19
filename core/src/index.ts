@@ -9,4 +9,6 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(dist));
   app.get('/{*path}', (_req, res) => res.sendFile(resolve(dist, 'index.html')));
 }
-app.listen(port, process.env.HOST || '127.0.0.1', () => console.log(JSON.stringify({ event: 'server_started', port })));
+app.listen(port, process.env.HOST || '127.0.0.1', () =>
+  console.log(JSON.stringify({ event: 'server_started', port })),
+);
