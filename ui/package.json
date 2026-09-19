@@ -1,7 +1,7 @@
 {
-  "name": "cas-profile-ui",
+  "name": "tracker-ui",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,16 +11,16 @@
   "dependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2"
+    "react-router-dom": "^7.18.2",
+    "lucide-react": "^0.577.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "@tailwindcss/vite": "^4.2.0",
+    "tailwindcss": "^4.2.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2"
-  },
-  "onlyBuiltDependencies": [
-    "esbuild"
-  ]
+  }
 }

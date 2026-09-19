@@ -3,8 +3,10 @@ dist/
 .env
 .env.*
 !env.example
-
-# Runtime/user data: create locally, never publish.
-db/*.sqlite
-db/*.sqlite-*
+config/accounts.json
+config/*.private.json
+coverage/
+test-results/
+*.bak.*
+db/*.sqlite*
 db/avatars/

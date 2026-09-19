@@ -1,52 +1,23 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 type User = { username: string; fullname: string };
-
-type AuthContextType = {
-  user: User | null;
-  loading: boolean;
-  login: () => void;
-  logout: () => void;
-};
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  login: () => {},
-  logout: () => {},
-});
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AuthContext = createContext<{ user: User | null; loading: boolean; error: string; logout: () => Promise<void> }>({ user: null, loading: true, error: '', logout: async () => {} });
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState('');
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data.user);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+    fetch('/api/auth/me').then(response => {
+      if (!response.ok) throw new Error('Unable to check your session. Please reload.');
+      return response.json();
+    }).then(data => setUser(data.user)).catch(error => setError(error.message)).finally(() => setLoading(false));
   }, []);
-
-  const login = () => {
-    window.location.href = '/api/auth/login';
-  };
-
-  const logout = () => {
-    fetch('/api/auth/logout', { method: 'POST' })
-      .then(() => {
-        setUser(null);
-        window.location.href = '/api/auth/logout/cas'; // Also sign out from SSO UI
-      });
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
+  async function logout() {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Could not sign out. Please try again.');
+      setUser(null);
+    } catch (error) { setError((error as Error).message); }
+  }
+  return <AuthContext.Provider value={{ user, loading, error, logout }}>{children}</AuthContext.Provider>;
+}
 export const useAuth = () => useContext(AuthContext);

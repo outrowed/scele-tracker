@@ -1,0 +1,6 @@
+{
+  "accounts": [
+    { "id": "source-1", "mode": "session", "username": "YOUR_MOODLE_USERNAME", "password": "YOUR_MOODLE_PASSWORD" },
+    { "id": "source-2", "mode": "token", "token": "OPTIONAL_USER_SCOPED_MOODLE_TOKEN" }
+  ]
+}

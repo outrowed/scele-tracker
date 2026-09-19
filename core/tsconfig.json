@@ -7,9 +7,11 @@
     "strict": true,
     "outDir": "dist",
     "rootDir": "src",
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": [
+    "src/index.ts",
+    "src/app.ts",
+    "src/tracker/**/*.ts"
+  ]
 }

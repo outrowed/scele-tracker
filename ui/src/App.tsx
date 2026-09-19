@@ -1,369 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useParams } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext.tsx';
-import styles from './App.module.css';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
+import { ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock3, Layers3, LogOut, RefreshCw, Search, ShieldCheck, Timer } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ActivityCard } from './ActivityCard';
+import { api, dateLabel, status, type Activity, type Snapshot } from './model';
 
-type Profile = {
-  username: string;
-  fullname: string;
-  interests?: string | null;
-  likes?: string | null;
-  dislikes?: string | null;
-  instagram?: string | null;
-  twitter?: string | null;
-  youtube?: string | null;
-  avatarUrl?: string | null;
-  profileSource?: 'local' | 'pmb.cs.ui.ac.id';
-  profileReadOnly?: boolean;
-  nickname?: string | null;
-  birthplace?: string | null;
-  birthdate?: string | null;
-  gender?: string | null;
-  major?: string | null;
-  cohort?: string | null;
-  school?: string | null;
-  line?: string | null;
-  bio?: string | null;
-  domicile?: string | null;
-  groupId?: string | null;
-  role?: string | null;
-  pmbInterests?: Array<{ name: string; isIt: boolean | null }>;
-};
-
-type Message = {
-  id: number;
-  content: string;
-  createdAt: string;
-  authorUsername: string;
-  authorFullname: string;
-  authorAvatarUrl?: string | null;
-};
-
-function Avatar({ profile, size = 'medium', preview }: { profile: Pick<Profile, 'fullname' | 'avatarUrl'>; size?: 'small' | 'medium' | 'large'; preview?: string | null }) {
-  const source = preview || profile.avatarUrl;
-  const initials = profile.fullname.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
-  return source ? <img className={`${styles.avatar} ${styles[`avatar${size[0].toUpperCase()}${size.slice(1)}`]}`} src={source} alt={`${profile.fullname}'s avatar`} /> : <span className={`${styles.avatar} ${styles.avatarFallback} ${styles[`avatar${size[0].toUpperCase()}${size.slice(1)}`]}`}>{initials}</span>;
+function SignIn() {
+  const failed = new URLSearchParams(window.location.search).has('error');
+  return <main className="login-layout">
+    <section><span className="section-kicker">A LITTLE LESS DEADLINE CHAOS</span><h1 className="login-title">Your courses.<br />One clear view<span className="text-teal-600">.</span></h1><p className="max-w-lg text-lg leading-8 text-slate-500">Assignments and quizzes from SCeLE, brought together so you can focus on what’s next.</p><div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-600"><span className="flex items-center gap-2"><Check size={17} /> Multiple course sources</span><span className="flex items-center gap-2"><Check size={17} /> Deadlines in WIB</span></div></section>
+    <section className="login-card"><div className="mb-7 inline-flex rounded-2xl bg-teal-50 p-4 text-teal-700"><ShieldCheck size={30} /></div><h2 className="text-2xl font-semibold">Welcome to Coursewatch</h2><p className="mt-3 leading-7 text-slate-500">Sign in with your Universitas Indonesia account to view the shared course tracker.</p>{failed && <p role="alert" className="notice mt-5">Sign-in could not be completed. Please try again.</p>}<a className="primary-button mt-8 w-full" href="/api/auth/login">Continue with UI SSO <ArrowRight size={18} /></a><p className="mt-5 text-center text-xs leading-6 text-slate-500">Your UI password is entered only on the university SSO page. Course account credentials stay on the server.</p></section>
+  </main>;
 }
-
-function formatLocalTime(timestamp: string) {
-  // SQLite CURRENT_TIMESTAMP is UTC but omits the ISO 8601 timezone suffix.
-  const isoTimestamp = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T');
-  const utcTimestamp = /(?:Z|[+-]\d{2}:?\d{2})$/.test(isoTimestamp) ? isoTimestamp : `${isoTimestamp}Z`;
-  return new Date(utcTimestamp).toLocaleString();
-}
-
-function AccountActions() {
-  const { user, login, logout } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-
-  useEffect(() => {
-    if (!user) { setProfile(null); return; }
-    fetch(`/api/users/${encodeURIComponent(user.username)}`).then((response) => response.json()).then((data) => setProfile(data.user));
-  }, [user]);
-
-  return (
-    <div className={styles.accountActions}>
-      {user ? (
-        <>
-          <Link className={styles.accountLink} to="/me"><Avatar profile={{ fullname: user.fullname, avatarUrl: profile?.avatarUrl }} size="small" /><span>{user.fullname}</span></Link>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={logout}>Logout</button>
-        </>
-      ) : (
-        <button className={`${styles.btn} ${styles.btnWarn}`} onClick={login}>Login via SSO UI</button>
-      )}
-    </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className={styles.header}>
-      <Link className={styles.navBrand} to="/messages">UI SSO Message Board</Link>
-      <nav className={styles.pillNav} aria-label="Primary navigation">
-        <NavLink to="/messages" className={({ isActive }) => `${styles.pillItem} ${isActive ? styles.pillItemActive : ''}`}>
-          Messages
-        </NavLink>
-        <NavLink to="/users" className={({ isActive }) => `${styles.pillItem} ${isActive ? styles.pillItemActive : ''}`}>
-          Users
-        </NavLink>
-      </nav>
-      <AccountActions />
-    </header>
-  );
-}
-
-function UsersPage() {
+function Dashboard() {
+  const [data, setData] = useState<Snapshot | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState('upcoming');
+  const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
-  const [users, setUsers] = useState<Profile[]>([]);
-
-  const load = (value = '') => fetch(`/api/users?q=${encodeURIComponent(value)}`)
-    .then((response) => response.json())
-    .then((data) => setUsers(data.users));
-
-  useEffect(() => { void load(); }, []);
-
-  return (
-    <main className={styles.container}>
-      <h1>Users</h1>
-      <p className={styles.description}>Public profiles created by SSO UI-authenticated users.</p>
-
-      <form className={styles.searchBar} onSubmit={(event) => { event.preventDefault(); void load(query); }}>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, username, or interest…" />
-        <button className={`${styles.btn} ${styles.btnPrimary}`}>Search</button>
-      </form>
-
-      {users.length ? users.map((user) => (
-        <article className={`${styles.card} ${styles.profileCard} ${styles.userCard}`} key={user.username}>
-          <Avatar profile={user} size="large" />
-          <div><h2><Link to={`/profile/${encodeURIComponent(user.username)}`}>{user.fullname}</Link></h2><p>@{user.username}</p>{user.interests && <p><strong>Interests:</strong> {user.interests}</p>}</div>
-        </article>
-      )) : <p>No users found.</p>}
-    </main>
-  );
+  const [course, setCourse] = useState('all');
+  const [now, setNow] = useState(Date.now() / 1000);
+  async function refresh() {
+    setBusy(true); setError('');
+    try { setData(await api<Snapshot>('/api/activities')); }
+    catch (error) { setError((error as Error).message); }
+    finally { setBusy(false); }
+  }
+  useEffect(() => { void refresh(); const timer = setInterval(() => setNow(Date.now() / 1000), 60_000); return () => clearInterval(timer); }, []);
+  const items = data?.activities || [];
+  const counts = { upcoming: items.filter(item => status(item, now) === 'upcoming').length, past: items.filter(item => status(item, now) === 'past').length, undated: items.filter(item => status(item, now) === 'undated').length };
+  const courses = [...new Map(items.map(item => [item.courseId, item.courseName])).entries()];
+  const visible = items.filter(item => (filter === 'all' || status(item, now) === filter) && (kind === 'all' || item.kind === kind) && (course === 'all' || String(item.courseId) === course) && `${item.name} ${item.courseName}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => filter === 'past' ? (b.dueAt || 0) - (a.dueAt || 0) : (a.dueAt || Infinity) - (b.dueAt || Infinity));
+  return <main className="page-width py-10 md:py-14">
+    <div className="flex flex-wrap items-end justify-between gap-5"><div><span className="section-kicker">YOUR ACADEMIC RADAR</span><h1 className="page-title">Keep your next deadline in sight.</h1><p className="mt-3 text-slate-500">A shared overview of assignments and quizzes. Less tab-hopping, more breathing room.</p></div><button className="secondary-button" onClick={refresh} disabled={busy}><RefreshCw size={16} className={busy ? 'animate-spin' : ''} />{busy ? 'Syncing…' : 'Refresh'}</button></div>
+    <section className="stats-grid" aria-label="Activity summary">{[[Clock3, 'Upcoming', counts.upcoming, 'upcoming'], [Timer, 'Past due', counts.past, 'past'], [BookOpen, 'Courses', courses.length, 'all'], [CalendarDays, 'Without dates', counts.undated, 'undated']].map(([Icon, title, count, tab]) => { const Symbol = Icon as typeof Clock3; return <button key={String(title)} className="stat-card" onClick={() => setFilter(String(tab))}><span className="flex items-center justify-between text-sm text-slate-500">{String(title)}<Symbol size={18} /></span><span className="mt-4 block text-3xl font-semibold tracking-tight">{busy && !data ? '—' : String(count)}</span></button>; })}</section>
+    {error && <p role="alert" className="notice mb-6">{error}</p>}
+    {data && !data.configured && <p className="notice mb-6">No Moodle accounts are configured yet. The operator needs to add the private accounts JSON file. No live course data is being shown.</p>}
+    {data?.sources.some(source => source.state !== 'ok') && <p role="alert" className="notice mb-6">Some sources could not be fully synced. This list may be incomplete. Check the source status below.</p>}
+    <div className="dashboard-grid"><section className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your activity feed</h2><span className="text-xs text-slate-500">{visible.length} activities</span></div><div className="filter-tabs" aria-label="Deadline filter">{[['upcoming', 'Upcoming'], ['past', 'Past due'], ['undated', 'No date'], ['all', 'All']].map(([value, label]) => <button key={value} aria-pressed={filter === value} className={filter === value ? 'selected' : ''} onClick={() => setFilter(value)}>{label}</button>)}</div>
+      <div className="search-row"><label className="search-box"><Search size={17} /><input aria-label="Search activities" placeholder="Search activities or courses…" value={query} onChange={event => setQuery(event.target.value)} /></label><select aria-label="Activity type" value={kind} onChange={event => setKind(event.target.value)}><option value="all">All types</option><option value="assignment">Assignments</option><option value="quiz">Quizzes</option></select><select aria-label="Course" value={course} onChange={event => setCourse(event.target.value)}><option value="all">All courses</option>{courses.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
+      <div className="flex flex-col gap-3" aria-live="polite">{busy && !data ? <div className="empty-state">Connecting to course sources… This first sync may take a moment.</div> : visible.length ? visible.map(item => <ActivityCard item={item} key={item.id} />) : <div className="empty-state"><div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 p-4 text-teal-700"><ClipboardList size={26} /></div><h3 className="font-semibold text-slate-800">{error ? 'Feed unavailable' : 'No activities in this view'}</h3><p className="mt-2 text-sm">{error ? 'Try refreshing when the connection is available.' : 'Try another filter, or check your course sources.'}</p></div>}</div>
+    </section><aside className="space-y-5"><section className="side-card"><span className="section-kicker">CONNECTED SOURCES</span><h2 className="mt-3 font-semibold">One place, multiple accounts</h2><p className="mt-2 text-sm leading-6 text-slate-500">Activities retain their source because account-specific dates can differ.</p><div className="mt-5 space-y-3">{data?.sources.length ? data.sources.map(source => <div key={source.id} className="flex items-center justify-between gap-3 text-sm"><span>{source.id}</span><span className={`source-state ${source.state}`}>{source.state === 'ok' ? 'Synced' : source.state === 'partial' ? 'Incomplete' : 'Unavailable'}</span></div>) : <p className="text-sm text-slate-400">No connected sources</p>}</div><p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">{data?.checkedAt ? `Last checked ${dateLabel(Date.parse(data.checkedAt) / 1000)}` : 'Waiting for first sync'}<br />Responses are cached for 5 minutes.</p></section><section className="side-card bg-teal-950! text-white"><Layers3 size={23} className="text-teal-300" /><h2 className="mt-4 font-semibold">A planner, not a gradebook.</h2><p className="mt-3 text-sm leading-6 text-teal-100/80">“Past due” means the date has passed. It does not tell you whether you submitted. Always confirm details in SCeLE.</p><p className="mt-4 text-xs leading-5 text-teal-100/70">Session calendar dates cover the previous 3 and next 6 months. Activities outside that window may show without dates.</p></section></aside></div>
+  </main>;
 }
-
-function MessagesPage() {
-  const { user, login } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [content, setContent] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const load = () => fetch('/api/messages')
-    .then((response) => response.json())
-    .then((data) => setMessages(data.messages));
-
-  useEffect(() => { void load(); }, []);
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!content.trim()) return;
-
-    setSubmitting(true);
-    const response = await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: content.trim() }),
-    });
-
-    if (response.ok) {
-      setContent('');
-      await load();
-    }
-    setSubmitting(false);
-  };
-
-  return (
-    <main className={styles.container}>
-      <h1 className={styles.boardTitle}>Messages</h1>
-
-      {user ? (
-        <form className={styles.postInputCard} onSubmit={submit}>
-          <textarea
-            className={styles.postTextarea}
-            rows={3}
-            maxLength={1000}
-            placeholder="Share something with the campus…"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            disabled={submitting}
-          />
-          <div className={styles.alignRight}>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={submitting || !content.trim()}>
-              {submitting ? 'Posting…' : 'Post message'}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className={`${styles.postInputCard} ${styles.centered}`}>
-          <p className={styles.bottomGap}>Log in with your SSO UI account to post a message.</p>
-          <button className={`${styles.btn} ${styles.btnWarn}`} onClick={login}>Login via SSO UI</button>
-        </div>
-      )}
-
-      {messages.length ? messages.map((message) => (
-        <article className={styles.postCard} key={message.id}>
-          <div className={styles.postHeader}>
-            <Link className={styles.postAuthor} to={`/profile/${encodeURIComponent(message.authorUsername)}`}>
-              <Avatar profile={{ fullname: message.authorFullname, avatarUrl: message.authorAvatarUrl }} size="small" />
-              <span>{message.authorFullname}</span>
-            </Link>
-            <time dateTime={`${message.createdAt.replace(' ', 'T')}Z`}>{formatLocalTime(message.createdAt)}</time>
-          </div>
-          <div className={styles.postContent}>{message.content}</div>
-        </article>
-      )) : <p>No messages yet. Be the first to post.</p>}
-    </main>
-  );
+function Details() {
+  const { id } = useParams();
+  const [item, setItem] = useState<Activity | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => { let active = true; setItem(null); setError(''); api<{ activity: Activity }>(`/api/activities/${encodeURIComponent(id || '')}`).then(data => { if (active) setItem(data.activity); }).catch(error => { if (active) setError(error.message); }); return () => { active = false; }; }, [id]);
+  return <main className="page-width py-10"><Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-slate-500"><ChevronLeft size={16} /> Back to activity feed</Link>{error ? <p role="alert" className="notice">{error}</p> : !item ? <p>Loading activity…</p> : <><div className="max-w-4xl"><span className="section-kicker">{item.courseName} · {item.kind}</span><h1 className="page-title">{item.name}</h1><p className="mt-3 text-sm text-slate-500">Shared metadata from {item.source}. Dates may reflect that account’s group or overrides.</p></div><div className="detail-grid mt-8"><section className="side-card"><h2 className="mb-5 text-xl font-semibold">Activity details</h2><div className="whitespace-pre-wrap break-words leading-8 text-slate-600">{item.description || 'No description was available from this source. View the activity in SCeLE for full instructions.'}</div></section><aside className="side-card"><h2 className="mb-5 font-semibold">Key dates</h2><dl className="space-y-5">{[['Opens', dateLabel(item.opensAt)], [item.kind === 'quiz' ? 'Closes' : 'Due', dateLabel(item.dueAt)], ['Cut-off', dateLabel(item.cutoffAt)], ['Time limit', item.timeLimit ? `${Math.round(item.timeLimit / 60)} minutes` : 'Not available']].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-sm font-medium">{value}</dd></div>)}</dl><a className="primary-button mt-7 w-full" href={item.url} target="_blank" rel="noopener noreferrer">Open in SCeLE <ArrowUpRight size={17} /></a><p className="mt-4 text-xs leading-5 text-slate-500">Opens using your own SCeLE session. You still need access to this course. No quiz is started by this tracker.</p></aside></div></>}</main>;
 }
-
-function ProfilePage() {
-  const { username = '' } = useParams();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [missing, setMissing] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/users/${encodeURIComponent(username)}`)
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((data) => setProfile(data.user))
-      .catch(() => setMissing(true));
-  }, [username]);
-
-  if (missing) return <main className={styles.container}><p>User not found.</p></main>;
-  if (!profile) return <main className={styles.container}>Loading…</main>;
-
-  const social = (label: string, handle?: string | null, base?: string) => handle ? (
-    <p><strong>{label}:</strong> {base ? <a target="_blank" rel="noreferrer" href={`${base}${handle.replace('@', '')}`}>{handle}</a> : handle}</p>
-  ) : null;
-
-  if (profile.profileSource === 'pmb.cs.ui.ac.id') return (
-    <main className={styles.container}>
-      <p className={styles.backLink}><Link to="/users">← Back to users</Link></p>
-      <article className={styles.card}>
-        <div className={styles.profileHeading}><Avatar profile={profile} size="large" /><div><h1>{profile.fullname}</h1><p className={styles.muted}>@{profile.username}</p></div></div>
-        <p className={styles.sourceNotice}>All profile information shown here is provided by <a href="https://pmb.cs.ui.ac.id" target="_blank" rel="noreferrer">pmb.cs.ui.ac.id</a>.</p>
-        {profile.nickname && <div className={styles.formGroup}><strong className={styles.infoLabel}>Nickname</strong><div>{profile.nickname}</div></div>}
-        {profile.bio && <div className={styles.formGroup}><strong className={styles.infoLabel}>Bio</strong><div>{profile.bio}</div></div>}
-        {profile.birthplace && <div className={styles.formGroup}><strong className={styles.infoLabel}>Place of birth</strong><div>{profile.birthplace}</div></div>}
-        {profile.gender && <div className={styles.formGroup}><strong className={styles.infoLabel}>Gender</strong><div>{profile.gender === 'f' ? 'Female' : profile.gender === 'm' ? 'Male' : profile.gender}</div></div>}
-        {profile.major && <div className={styles.formGroup}><strong className={styles.infoLabel}>Major and cohort</strong><div>{profile.major}{profile.cohort ? ` · ${profile.cohort}` : ''}</div></div>}
-        {profile.school && <div className={styles.formGroup}><strong className={styles.infoLabel}>School</strong><div>{profile.school}</div></div>}
-        {profile.domicile && <div className={styles.formGroup}><strong className={styles.infoLabel}>Domicile</strong><div>{profile.domicile}</div></div>}
-        {profile.line && <div className={styles.formGroup}><strong className={styles.infoLabel}>LINE ID</strong><div>{profile.line}</div></div>}
-        {profile.instagram && <div className={styles.formGroup}><strong className={styles.infoLabel}>Instagram</strong><div><a target="_blank" rel="noreferrer" href={`https://instagram.com/${profile.instagram.replace('@', '')}`}>{profile.instagram}</a></div></div>}
-        {profile.groupId && <div className={styles.formGroup}><strong className={styles.infoLabel}>PMB group</strong><div>{profile.groupId}</div></div>}
-        {profile.role && <div className={styles.formGroup}><strong className={styles.infoLabel}>Role</strong><div>{profile.role}</div></div>}
-        <div className={styles.formGroup}><strong className={styles.infoLabel}>Interests</strong>{profile.pmbInterests?.length ? <ul className={styles.interestList}>{profile.pmbInterests.map((interest) => <li key={`${interest.name}-${interest.isIt}`}>{interest.name}{interest.isIt !== null && <span className={styles.interestType}>{interest.isIt ? 'IT' : 'Non-IT'}</span>}</li>)}</ul> : <div><em>Not specified</em></div>}</div>
-      </article>
-    </main>
-  );
-
-  return (
-    <main className={styles.container}>
-      <p className={styles.backLink}><Link to="/users">← Back to users</Link></p>
-      <article className={styles.card}>
-        <div className={styles.profileHeading}><Avatar profile={profile} size="large" /><div><h1>{profile.fullname}</h1><p className={styles.muted}>@{profile.username}</p></div></div>
-        <div className={styles.formGroup}><strong className={styles.infoLabel}>Interests</strong><div>{profile.interests || <em>Not specified</em>}</div></div>
-        <div className={styles.formGroup}><strong className={styles.infoLabel}>Likes</strong><div>{profile.likes || <em>Not specified</em>}</div></div>
-        <div className={styles.formGroup}><strong className={styles.infoLabel}>Dislikes</strong><div>{profile.dislikes || <em>Not specified</em>}</div></div>
-        <h3 className={styles.socialTitle}>Social media</h3>
-        {social('Instagram', profile.instagram, 'https://instagram.com/')}
-        {social('Twitter/X', profile.twitter, 'https://twitter.com/')}
-        {social('YouTube', profile.youtube)}
-        {!profile.instagram && !profile.twitter && !profile.youtube && <p><em>No social media linked.</em></p>}
-      </article>
-    </main>
-  );
+function Shell() {
+  const { user, loading, error, logout } = useAuth();
+  return <div className="min-h-screen"><header className="site-header"><div className="page-width flex min-h-20 items-center justify-between gap-4"><Link to="/" className="brand"><span className="brand-icon"><Layers3 size={23} /></span>Coursewatch<span className="brand-tag">SCeLE</span></Link>{user ? <div className="flex items-center gap-4"><span className="hidden text-sm text-slate-500 sm:block">{user.fullname}</span><button onClick={logout} className="secondary-button" aria-label="Sign out"><LogOut size={16} /><span className="hidden sm:inline">Sign out</span></button></div> : <span className="hidden text-xs text-slate-500 sm:block">Built for a clearer semester</span>}</div></header>{error && <p role="alert" className="notice page-width mt-6">{error}</p>}{loading ? <main className="page-width py-20">Checking your session…</main> : !user ? <SignIn /> : <Routes><Route path="/" element={<Dashboard />} /><Route path="/activities/:id" element={<Details />} /><Route path="*" element={<main className="page-width py-20"><h1>Page not found</h1><Link to="/">Return to the feed</Link></main>} /></Routes>}<footer className="page-width flex flex-wrap justify-between gap-3 border-t border-slate-200 py-6 text-xs text-slate-500"><span>Coursewatch · Independent student tool, not an official UI service.</span><span>All dates in Asia/Jakarta · WIB</span></footer></div>;
 }
-
-function MePage() {
-  const { user, login, loading } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [avatar, setAvatar] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (user) fetch(`/api/users/${encodeURIComponent(user.username)}`).then((response) => response.json()).then((data) => setProfile(data.user));
-  }, [user]);
-
-  if (loading) return <main className={styles.container}>Loading…</main>;
-  if (!user) return (
-    <main className={`${styles.container} ${styles.centerMessage}`}>
-      <h1>Sign in required</h1>
-      <p className={styles.bottomGap}>Use your SSO UI account to edit your profile.</p>
-      <button className={`${styles.btn} ${styles.btnWarn}`} onClick={login}>Login via SSO UI</button>
-    </main>
-  );
-  if (!profile) return <main className={styles.container}>Loading…</main>;
-  if (profile.profileReadOnly) return (
-    <main className={styles.container}>
-      <div className={styles.profileHeading}><Avatar profile={profile} size="large" /><h1>My profile</h1></div>
-      <article className={styles.card}>
-        <p className={styles.sourceNotice}>Your profile is managed by and loaded from <a href="https://pmb.cs.ui.ac.id" target="_blank" rel="noreferrer">pmb.cs.ui.ac.id</a>. Local profile editing and avatar uploads are disabled by the server.</p>
-        <Link to={`/profile/${encodeURIComponent(profile.username)}`}>View your public profile</Link>
-      </article>
-    </main>
-  );
-
-  const chooseAvatar = (file: File | undefined) => {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatar(file || null);
-    setAvatarPreview(file ? URL.createObjectURL(file) : null);
-  };
-
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    delete values.avatar;
-    const payload = new FormData();
-    payload.set('profile', JSON.stringify(values));
-    if (avatar) payload.set('avatar', avatar);
-
-    fetch('/api/users/me', { method: 'PUT', body: payload })
-      .then((response) => response.json())
-      .then((data) => {
-        setProfile(data.user);
-        setAvatar(null);
-        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-        setAvatarPreview(null);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      });
-  };
-
-  const field = (name: 'fullname' | 'interests' | 'likes' | 'dislikes' | 'instagram' | 'twitter' | 'youtube', label: string, multiline = false) => {
-    const value = profile[name] || '';
-    return <div className={styles.formGroup}>
-      <label>{label}</label>
-      {multiline ? <textarea name={name} defaultValue={value} rows={3} /> : <input name={name} defaultValue={value} />}
-    </div>;
-  };
-
-  return (
-    <main className={styles.container}>
-      <div className={styles.profileHeading}><Avatar profile={profile} size="large" preview={avatarPreview} /><h1>My profile</h1></div>
-      {saved && <p className={styles.saved}>✓ Profile saved.</p>}
-      <form onSubmit={submit} className={styles.card}>
-        <div className={styles.formGroup}><label>Profile picture</label><input type="file" name="avatar" accept="image/*" onChange={(event) => chooseAvatar(event.target.files?.[0])} /><small>The selected image is previewed locally and uploaded only when you save the profile.</small></div>
-        {field('fullname', 'Full name')}
-        {field('interests', 'Interests')}
-        {field('likes', 'Likes', true)}
-        {field('dislikes', 'Dislikes', true)}
-        <h3 className={styles.sectionTitle}>Social media</h3>
-        {field('instagram', 'Instagram username')}
-        {field('twitter', 'Twitter/X username')}
-        {field('youtube', 'YouTube handle')}
-        <div className={styles.saveButton}><button className={`${styles.btn} ${styles.btnPrimary}`}>Save profile</button></div>
-      </form>
-    </main>
-  );
-}
-
-function AppLayout() {
-  return (
-    <div className={styles.appShell}>
-      <Header />
-      <div className={styles.mainContent}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/messages" replace />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/profile/:username" element={<ProfilePage />} />
-          <Route path="/me" element={<MePage />} />
-          <Route path="*" element={<Navigate to="/messages" replace />} />
-        </Routes>
-      </div>
-      <footer className={styles.footer}>
-        <span>Taruna Prasetya</span>
-        <span aria-hidden="true"> · </span>
-        <a href="https://github.com/outrowed/ui-sso-message-board/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT</a>
-        <span aria-hidden="true"> · </span>
-        <a href="https://github.com/outrowed/ui-sso-message-board" target="_blank" rel="noreferrer">View source on GitHub</a>
-      </footer>
-    </div>
-  );
-}
-
-export default function App() {
-  return <BrowserRouter><AuthProvider><AppLayout /></AuthProvider></BrowserRouter>;
-}
+export default function App() { return <BrowserRouter><AuthProvider><Shell /></AuthProvider></BrowserRouter>; }
