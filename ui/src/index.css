@@ -47,5 +47,5 @@
   .notice { @apply rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900; }
   .empty-state { @apply rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500; }
 }
-@media (max-width: 480px) { .activity-card { gap: 12px; } .activity-icon { padding: 9px; } .deadline { margin-left: 51px; } .brand-tag { display: none; } }
+@media (max-width: 480px) { .activity-card { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; } .activity-icon { padding: 9px; } .deadline { grid-column: 2; justify-self: start; margin-left: 0; } .brand-tag { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
