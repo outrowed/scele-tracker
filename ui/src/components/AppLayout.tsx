@@ -7,6 +7,7 @@ import SignInPage from '../pages/SignInPage';
 import DashboardPage from '../pages/DashboardPage';
 import ActivityDetailsPage from '../pages/ActivityDetailsPage';
 import AdminPage from '../pages/AdminPage';
+import CalendarPage from '../pages/CalendarPage';
 
 export function AppLayout() {
   const { user, loading, error } = useAuth();
@@ -31,6 +32,7 @@ export function AppLayout() {
       ) : (
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route
             path="/admin"
             element={

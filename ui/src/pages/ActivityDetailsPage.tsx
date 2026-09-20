@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowUpRight, ChevronLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { api, dateLabel, type Activity } from '../model';
 import { Container } from '../components/Container';
 import { Card } from '../components/Card';
 import { ButtonLink } from '../components/Button';
-import { PageTitle, SectionKicker } from '../components/Typography';
+import {
+  PageHeader,
+  SectionDescription,
+  SectionKicker,
+  SectionTitle,
+} from '../components/Typography';
 
 export default function ActivityDetailsPage() {
   const { id } = useParams();
   const [item, setItem] = useState<Activity | null>(null);
   const [error, setError] = useState('');
+
   // Reload for each route ID; ignore stale responses after navigation or unmount.
   useEffect(() => {
     let active = true;
@@ -23,16 +29,13 @@ export default function ActivityDetailsPage() {
       .catch((error) => {
         if (active) setError(error.message);
       });
-    // This guards state updates; it does not cancel the in-flight HTTP request.
     return () => {
       active = false;
     };
   }, [id]);
+
   return (
     <Container as="main" className="py-10">
-      <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-slate-500">
-        <ChevronLeft size={16} /> Back to activity feed
-      </Link>
       {error ? (
         <p
           role="alert"
@@ -41,28 +44,31 @@ export default function ActivityDetailsPage() {
           {error}
         </p>
       ) : !item ? (
-        <p>Loading activity…</p>
+        <SectionDescription>Loading activity…</SectionDescription>
       ) : (
         <>
-          <div className="max-w-4xl">
-            <SectionKicker>
-              {item.courseName} · {item.kind}
-            </SectionKicker>
-            <PageTitle>{item.name}</PageTitle>
-            <p className="mt-3 text-sm text-slate-500">
-              Check SCeLE to confirm the dates that apply to your class.
-            </p>
-          </div>
+          <PageHeader
+            backTo="/"
+            backLabel="Back to activity feed"
+            kicker={
+              <SectionKicker>
+                {item.courseName} · {item.kind}
+              </SectionKicker>
+            }
+            title={item.name}
+            description="Check SCeLE to confirm the dates that apply to your class."
+          />
+
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <Card as="section">
-              <h2 className="mb-5 text-xl font-semibold">Activity details</h2>
+              <SectionTitle className="mb-5 text-xl">Activity details</SectionTitle>
               <div className="whitespace-pre-wrap break-words leading-8 text-slate-600">
                 {item.description ||
                   'No description is available. View the activity in SCeLE for full instructions.'}
               </div>
             </Card>
             <Card as="aside">
-              <h2 className="mb-5 font-semibold">Key dates</h2>
+              <SectionTitle className="mb-5">Key dates</SectionTitle>
               <dl className="space-y-5">
                 {[
                   ['Opens', dateLabel(item.opensAt)],

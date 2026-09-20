@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Check, RotateCcw } from 'lucide-react';
 import { resetLocalPreferences } from '../hooks/useDismissible';
 import { api } from '../model';
 import { Container } from '../components/Container';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { PageTitle } from '../components/Typography';
+import { PageHeader, SectionDescription, SectionTitle } from '../components/Typography';
 
 export default function AdminPage() {
   const [data, setData] = useState<{
@@ -32,13 +31,11 @@ export default function AdminPage() {
 
   return (
     <Container as="main" className="py-10">
-      <Link to="/" className="text-sm font-medium text-teal-700 hover:underline">
-        ← Activity feed
-      </Link>
-      <PageTitle>Administration</PageTitle>
-      <p className="mt-3 text-slate-500">
-        Roles are managed by exact UI SSO username in the server's users.json file.
-      </p>
+      <PageHeader
+        title="Administration"
+        description="Roles are managed by exact UI SSO username in the server's users.json file."
+      />
+
       {error && (
         <p
           role="alert"
@@ -50,11 +47,11 @@ export default function AdminPage() {
 
       {/* Admin actions: Local testing and preferences reset */}
       <Card as="section" className="mt-6">
-        <h2 className="font-semibold text-slate-900">Developer &amp; Admin Controls</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <SectionTitle>Developer &amp; Admin Controls</SectionTitle>
+        <SectionDescription>
           Reset client-side stored data such as dismissed notices, slogans, and local
           preferences.
-        </p>
+        </SectionDescription>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button type="button" onClick={handleResetLocalStorage}>
             <RotateCcw size={15} />
@@ -73,22 +70,22 @@ export default function AdminPage() {
       </Card>
 
       <Card as="section" className="mt-6">
-        <h2 className="font-semibold text-slate-900">Source diagnostics</h2>
+        <SectionTitle>Source diagnostics</SectionTitle>
         {!data ? (
-          <p className="mt-3 text-sm text-slate-500">Loading…</p>
+          <SectionDescription className="mt-3">Loading…</SectionDescription>
         ) : (
           <>
             <p className="my-3 text-sm">
-              {data.configured ? 'Accounts configured' : 'No accounts configured'}
+              Status: {data.configured ? 'Configured' : 'No sources configured'}
             </p>
             {data.sources.map((source) => (
               <p key={source.id} className="my-2 text-sm text-slate-700">
-                {source.id} · {source.state}
+                Source: {source.id} · State: {source.state}
               </p>
             ))}
             <p className="mt-4 text-xs text-slate-500">
-              Last checked: {data.checkedAt || 'Not yet'} · Shared cache refreshes after
-              ten minutes of staleness while in use.
+              Last checked:{' '}
+              {data.checkedAt ? new Date(data.checkedAt).toLocaleString() : 'Never'}
             </p>
           </>
         )}

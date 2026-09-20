@@ -16,7 +16,7 @@ import { ActivityCard } from '../components/ActivityCard';
 import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
-import { PageTitle } from '../components/Typography';
+import { PageHeader, SectionTitle } from '../components/Typography';
 import { useDismissible } from '../hooks/useDismissible';
 import { api, status, type Snapshot } from '../model';
 import styles from './DashboardPage.module.css';
@@ -105,19 +105,22 @@ export default function DashboardPage() {
 
   return (
     <Container as="main" className="py-10 md:py-14">
-      {/* Header section with normal heading */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageTitle className="mt-0">Your activity feed</PageTitle>
-        <Button
-          variant="secondary"
-          className="shrink-0"
-          onClick={refresh}
-          disabled={busy}
-        >
-          <RefreshCw size={16} className={busy ? 'animate-spin' : ''} />
-          {busy ? 'Syncing…' : 'Refresh'}
-        </Button>
-      </div>
+      {/* Unified page header */}
+      <PageHeader
+        title="Your activity feed"
+        description="Stay on top of upcoming assignments and quizzes across your enrolled courses."
+        action={
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            onClick={refresh}
+            disabled={busy}
+          >
+            <RefreshCw size={16} className={busy ? 'animate-spin' : ''} />
+            {busy ? 'Syncing…' : 'Refresh'}
+          </Button>
+        }
+      />
 
       {/* Consistent notification and guide message stack; zero spacing when empty via CSS :not(:has(*)) */}
       <div
@@ -224,7 +227,7 @@ export default function DashboardPage() {
       {/* Main activities feed */}
       <section className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-800">Deadlines &amp; Tasks</h2>
+          <SectionTitle>Deadlines &amp; Tasks</SectionTitle>
           <span className="text-xs text-slate-500">{visible.length} activities</span>
         </div>
         <div className={styles.filterTabs} aria-label="Deadline filter">
