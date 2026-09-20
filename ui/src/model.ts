@@ -15,6 +15,9 @@ export type Activity = {
 export type Snapshot = {
   activities: Activity[];
   incomplete: boolean;
+  preparing?: boolean;
+  stale?: boolean;
+  refreshing?: boolean;
 };
 export function status(item: Activity, now = Date.now() / 1000) {
   if (item.dueAt && item.dueAt <= now) return 'past';

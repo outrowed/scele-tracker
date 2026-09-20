@@ -12,3 +12,5 @@ db/*.sqlite*
 db/avatars/
 
 config/users.json
+
+data/

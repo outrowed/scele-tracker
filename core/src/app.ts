@@ -7,7 +7,9 @@ import cookieParser from 'cookie-parser';
 import { auth, requireSession, sessionUser } from './tracker/auth.js';
 import { createTracker } from './tracker/store.js';
 
-export function createApp(tracker = createTracker()) {
+export function createApp(
+  tracker: Pick<ReturnType<typeof createTracker>, 'get'> = createTracker(),
+) {
   const app = express();
   app.disable('x-powered-by');
   app.use(cookieParser());
@@ -49,6 +51,9 @@ export function createApp(tracker = createTracker()) {
       const data = await tracker.get();
       res.json({
         activities: data.activities.map(publicActivity),
+        preparing: data.preparing,
+        stale: data.stale,
+        refreshing: data.refreshing,
         incomplete:
           !data.configured || data.sources.some((source) => source.state !== 'ok'),
       });

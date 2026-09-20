@@ -35,11 +35,34 @@ export default function DashboardPage() {
     }
   }
 
-  // Load on mount and advance deadline labels each minute; release the timer on unmount.
+  // Poll only while visible; remove the listener and timer when leaving the dashboard.
   useEffect(() => {
-    void refresh();
-    const timer = setInterval(() => setNow(Date.now() / 1000), 60_000);
-    return () => clearInterval(timer);
+    let active = true;
+    let inFlight = false;
+    async function poll() {
+      if (document.visibilityState !== 'visible' || inFlight) return;
+      inFlight = true;
+      try {
+        const snapshot = await api<Snapshot>('/api/activities');
+        if (active) {
+          setData(snapshot);
+          setError('');
+          setNow(Date.now() / 1000);
+        }
+      } catch (error) {
+        if (active) setError((error as Error).message);
+      } finally {
+        inFlight = false;
+      }
+    }
+    void poll();
+    const timer = setInterval(poll, 60_000);
+    document.addEventListener('visibilitychange', poll);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', poll);
+    };
   }, []);
 
   const items = data?.activities || [];
@@ -113,10 +136,15 @@ export default function DashboardPage() {
           {error}
         </p>
       )}
-      {data?.incomplete && (
+      {(data?.incomplete || data?.stale) && (
         <p role="alert" className="notice mb-6">
           Some course information is temporarily unavailable. Please check SCeLE for the
           latest details.
+        </p>
+      )}
+      {data?.preparing && (
+        <p className="notice mb-6">
+          Preparing course data. This page will update automatically.
         </p>
       )}
       <div className="dashboard-grid">

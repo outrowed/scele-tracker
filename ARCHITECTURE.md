@@ -32,7 +32,7 @@ license remain for attribution; obsolete application modules have been removed.
 - `moodle.ts`: isolated session transport, token transport, and metadata parsing.
   Account-specific deadlines are not collapsed. Calendar coverage and adapter
   limitations are documented in README.md; no activity submission is performed.
-- `store.ts`: five-minute snapshot cache and shared in-flight synchronization.
+- `store.ts`: ten-minute persistent SQLite snapshot cache and shared in-flight synchronization.
   Concurrent visitors await the same sync instead of creating duplicate requests.
 - `index.ts`: startup and production frontend serving; `env.ts` loads environment.
 
@@ -48,3 +48,5 @@ Browser verification must use desktop and mobile widths; synthetic fixtures are
 only browser-test responses and never an authentication bypass in production.
 Preserve deployed `.env`, `config/accounts.json`, `config/users.json` and runtime
 UID settings when updating the service. No private configuration belongs in Git.
+
+`cache.ts` owns SQLite storage; `store.ts` owns freshness and retry policy. No background timer runs on the server. Dashboard polling is scoped to document visibility and cleaned up on unmount.

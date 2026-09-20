@@ -42,7 +42,8 @@ export default function AdminPage() {
               </p>
             ))}
             <p className="mt-4 text-sm text-slate-500">
-              Last checked: {data.checkedAt || 'Not yet'} · Cached for five minutes.
+              Last checked: {data.checkedAt || 'Not yet'} · Shared cache refreshes after
+              ten minutes of staleness while in use.
             </p>
           </>
         )}

@@ -2,7 +2,7 @@ name: scele-course-tracker
 services:
   app:
     build: .
-    image: local/scele-course-tracker:1.0.0
+    image: local/scele-course-tracker:1.1.0
     container_name: scele-course-tracker
     user: "1002:1002"
     labels:
@@ -14,9 +14,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      CACHE_DB_PATH: /app/data/cache.sqlite
       MOODLE_ACCOUNTS_FILE: /app/config/accounts.json
     volumes:
       - ./config:/app/config:ro
+      - ./data:/app/data
     networks:
       proxy:
         ipv4_address: 192.168.176.51

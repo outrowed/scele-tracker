@@ -1,60 +1,131 @@
+import { resolve } from 'node:path';
 import { loadAccounts } from './accounts.js';
 import { syncSession, syncToken, retainSessions } from './moodle.js';
-import type { Activity, SourceStatus } from './types.js';
+import { openCache, type CachedSnapshot } from './cache.js';
+import type { Account, SyncResult } from './types.js';
 
-export function createTracker() {
-  let snapshot: {
-    activities: Activity[];
-    sources: SourceStatus[];
-    configured: boolean;
-    checkedAt: string | null;
-  } = { activities: [], sources: [], configured: false, checkedAt: null };
-  let pending: Promise<typeof snapshot> | null = null;
-  let checked = 0;
-  async function sync() {
-    const accounts = await loadAccounts();
-    retainSessions(
-      accounts
-        .filter((account) => account.mode === 'session')
-        .map((account) => account.id),
+export const FRESH_MS = 10 * 60_000;
+export function createTracker(
+  options: {
+    path?: string;
+    now?: () => number;
+    accounts?: () => Promise<Account[]>;
+    sync?: (account: Account) => Promise<SyncResult>;
+  } = {},
+) {
+  const now = options.now || Date.now;
+  const accounts = options.accounts || loadAccounts;
+  const syncAccount =
+    options.sync ||
+    ((account: Account) =>
+      account.mode === 'session' ? syncSession(account) : syncToken(account));
+  // Open lazily: health checks and unauthenticated requests must not start cache work.
+  let cache: ReturnType<typeof openCache> | undefined;
+  let snapshot: CachedSnapshot;
+  let pending: Promise<void> | null = null;
+  function initialize() {
+    if (cache) return;
+    cache = openCache(
+      options.path || process.env.CACHE_DB_PATH || resolve('data/cache.sqlite'),
     );
-    const activities: Activity[] = [];
-    const sources: SourceStatus[] = [];
-    for (const account of accounts) {
+    snapshot = cache.read() || {
+      activities: [],
+      sources: [],
+      configured: false,
+      checkedAt: null,
+      nextAttempt: 0,
+      failures: 0,
+    };
+  }
+  async function refresh() {
+    try {
+      const configured = await accounts();
+      retainSessions(configured.filter((a) => a.mode === 'session').map((a) => a.id));
+      const next: CachedSnapshot = {
+        activities: [],
+        sources: [],
+        configured: configured.length > 0,
+        checkedAt: new Date(now()).toISOString(),
+        nextAttempt: 0,
+        failures: 0,
+      };
+      for (const account of configured) {
+        const old = snapshot.activities.filter((item) => item.source === account.id);
+        const previous = snapshot.sources.find((source) => source.id === account.id);
+        try {
+          const result = await syncAccount(account);
+          // Partial results add discoveries but cannot prove old activities were deleted.
+          const items = result.complete
+            ? new Map()
+            : new Map(old.map((item) => [item.id, item]));
+          for (const item of result.activities) items.set(item.id, item);
+          next.activities.push(...items.values());
+          next.sources.push({
+            id: account.id,
+            state: result.complete ? 'ok' : 'partial',
+            updatedAt: result.complete
+              ? new Date(now()).toISOString()
+              : previous?.updatedAt || null,
+          });
+        } catch {
+          next.activities.push(...old);
+          next.sources.push({
+            id: account.id,
+            state: 'error',
+            updatedAt: previous?.updatedAt || null,
+          });
+        }
+      }
+      const failed = next.sources.some((source) => source.state !== 'ok');
+      next.failures = failed ? snapshot.failures + 1 : 0;
+      next.nextAttempt =
+        now() +
+        (failed
+          ? Math.min(FRESH_MS, 60_000 * 2 ** Math.min(next.failures - 1, 4))
+          : FRESH_MS);
+      cache!.write(next);
+      snapshot = next;
+    } catch {
+      // Never expose credentials or raw upstream errors; retain last-good data on failure.
+      snapshot = {
+        ...snapshot,
+        failures: snapshot.failures + 1,
+        nextAttempt: now() + FRESH_MS,
+      };
       try {
-        const result = await (account.mode === 'session'
-          ? syncSession(account)
-          : syncToken(account));
-        activities.push(...result.activities);
-        sources.push({
-          id: account.id,
-          state: result.complete ? 'ok' : 'partial',
-          updatedAt: new Date().toISOString(),
-        });
+        cache!.write(snapshot);
       } catch {
-        // Never log upstream responses, passwords, cookies, or token-bearing URLs.
-        console.warn(JSON.stringify({ event: 'moodle_sync_failed', source: account.id }));
-        sources.push({ id: account.id, state: 'error', updatedAt: null });
+        console.warn('Cache persistence unavailable');
       }
     }
-    snapshot = {
-      activities,
-      sources,
-      configured: accounts.length > 0,
-      checkedAt: new Date().toISOString(),
-    };
-    checked = Date.now();
-    return snapshot;
   }
   return {
     async get() {
-      // Share one in-flight sync so concurrent page loads do not multiply Moodle requests.
-      if (pending) return pending;
-      if (checked && Date.now() - checked < 5 * 60_000) return snapshot;
-      pending = sync().finally(() => {
-        pending = null;
-      });
-      return pending;
+      initialize();
+      // No scheduler: only an authenticated request can start work; concurrent readers share it.
+      if (!pending && now() >= snapshot.nextAttempt) {
+        pending = refresh().finally(() => {
+          pending = null;
+        });
+      }
+      return {
+        ...snapshot,
+        refreshing: Boolean(pending),
+        preparing: !snapshot.checkedAt,
+        stale:
+          snapshot.failures > 0 ||
+          snapshot.sources.some(
+            (source) =>
+              !source.updatedAt || now() - Date.parse(source.updatedAt) >= FRESH_MS,
+          ),
+      };
+    },
+    async settled() {
+      await pending;
+    },
+    async close() {
+      await pending;
+      cache?.close();
     },
   };
 }
