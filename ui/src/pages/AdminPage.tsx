@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { Check, RotateCcw } from 'lucide-react';
 import { resetLocalPreferences } from '../hooks/useDismissible';
 import { api } from '../model';
+import { Container } from '../components/Container';
+import { Card } from '../components/Card';
+import { Button } from '../components/Button';
+import { PageTitle } from '../components/Typography';
 
 export default function AdminPage() {
   const [data, setData] = useState<{
@@ -27,36 +31,35 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="page-width py-10">
+    <Container as="main" className="py-10">
       <Link to="/" className="text-sm font-medium text-teal-700 hover:underline">
         ← Activity feed
       </Link>
-      <h1 className="page-title">Administration</h1>
+      <PageTitle>Administration</PageTitle>
       <p className="mt-3 text-slate-500">
-        Roles are managed by exact UI SSO username in the server’s users.json file.
+        Roles are managed by exact UI SSO username in the server's users.json file.
       </p>
       {error && (
-        <p role="alert" className="notice mt-6">
+        <p
+          role="alert"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+        >
           {error}
         </p>
       )}
 
       {/* Admin actions: Local testing and preferences reset */}
-      <section className="side-card mt-6">
-        <h2 className="font-semibold text-slate-900">Developer & Admin Controls</h2>
+      <Card as="section" className="mt-6">
+        <h2 className="font-semibold text-slate-900">Developer &amp; Admin Controls</h2>
         <p className="mt-1 text-sm text-slate-500">
           Reset client-side stored data such as dismissed notices, slogans, and local
           preferences.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleResetLocalStorage}
-          >
+          <Button type="button" onClick={handleResetLocalStorage}>
             <RotateCcw size={15} />
             Reset Local Storage / Notices
-          </button>
+          </Button>
           {resetMessage && (
             <span
               role="status"
@@ -67,9 +70,9 @@ export default function AdminPage() {
             </span>
           )}
         </div>
-      </section>
+      </Card>
 
-      <section className="side-card mt-6">
+      <Card as="section" className="mt-6">
         <h2 className="font-semibold text-slate-900">Source diagnostics</h2>
         {!data ? (
           <p className="mt-3 text-sm text-slate-500">Loading…</p>
@@ -89,7 +92,7 @@ export default function AdminPage() {
             </p>
           </>
         )}
-      </section>
-    </main>
+      </Card>
+    </Container>
   );
 }

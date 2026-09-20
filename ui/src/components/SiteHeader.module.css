@@ -1,0 +1,17 @@
+/* Brand tag: hidden on narrow viewports */
+.brandTag {
+  margin-left: 0.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  padding: 0.125rem 0.375rem;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-500, #64748b);
+}
+
+@media (max-width: 480px) {
+  .brandTag {
+    display: none;
+  }
+}

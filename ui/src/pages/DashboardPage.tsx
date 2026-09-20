@@ -14,8 +14,12 @@ import {
 } from 'lucide-react';
 import { ActivityCard } from '../components/ActivityCard';
 import { MessageBox } from '../components/MessageBox';
+import { Container } from '../components/Container';
+import { Button } from '../components/Button';
+import { PageTitle } from '../components/Typography';
 import { useDismissible } from '../hooks/useDismissible';
 import { api, status, type Snapshot } from '../model';
+import styles from './DashboardPage.module.css';
 
 export default function DashboardPage() {
   const [data, setData] = useState<Snapshot | null>(null);
@@ -30,7 +34,7 @@ export default function DashboardPage() {
   const [sloganDismissed, dismissSlogan] = useDismissible('dashboard_slogan');
   const [guideDismissed, dismissGuide] = useDismissible('dashboard_guide');
 
-  // Fetch the shared snapshot (which may trigger server sync) and update this page’s feed.
+  // Fetch the shared snapshot (which may trigger server sync) and update this page's feed.
   async function refresh() {
     setBusy(true);
     setError('');
@@ -100,18 +104,26 @@ export default function DashboardPage() {
     );
 
   return (
-    <main className="page-width py-10 md:py-14">
+    <Container as="main" className="py-10 md:py-14">
       {/* Header section with normal heading */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="page-title mt-0">Your activity feed</h1>
-        <button className="secondary-button shrink-0" onClick={refresh} disabled={busy}>
+        <PageTitle className="mt-0">Your activity feed</PageTitle>
+        <Button
+          variant="secondary"
+          className="shrink-0"
+          onClick={refresh}
+          disabled={busy}
+        >
           <RefreshCw size={16} className={busy ? 'animate-spin' : ''} />
           {busy ? 'Syncing…' : 'Refresh'}
-        </button>
+        </Button>
       </div>
 
       {/* Consistent notification and guide message stack; zero spacing when empty via CSS :not(:has(*)) */}
-      <div className="notice-stack" aria-label="Notices and guides">
+      <div
+        className={`${styles.noticeStack} flex flex-col gap-3`}
+        aria-label="Notices and guides"
+      >
         {error && (
           <MessageBox
             role="alert"
@@ -168,7 +180,7 @@ export default function DashboardPage() {
             onDismiss={dismissGuide}
             dismissLabel="Dismiss guide"
           >
-            “Past due” means the deadline has passed. It does not reflect personal
+            "Past due" means the deadline has passed. It does not reflect personal
             submission status. Always verify quiz submissions and assignment uploads on
             SCeLE.
           </MessageBox>
@@ -176,7 +188,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick stats grid */}
-      <section className="stats-grid" aria-label="Activity summary">
+      <section
+        className="my-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5"
+        aria-label="Activity summary"
+      >
         {[
           { icon: Clock3, title: 'Upcoming', count: counts.upcoming, tab: 'upcoming' },
           { icon: Timer, title: 'Past due', count: counts.past, tab: 'past' },
@@ -189,7 +204,11 @@ export default function DashboardPage() {
           },
         ].map(({ icon: Icon, title, count, tab }) => {
           return (
-            <button key={title} className="stat-card" onClick={() => setFilter(tab)}>
+            <button
+              key={title}
+              className="rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-teal-400"
+              onClick={() => setFilter(tab)}
+            >
               <span className="flex items-center justify-between text-sm text-slate-500">
                 {title}
                 <Icon size={18} />
@@ -205,10 +224,10 @@ export default function DashboardPage() {
       {/* Main activities feed */}
       <section className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-800">Deadlines & Tasks</h2>
+          <h2 className="text-lg font-semibold text-slate-800">Deadlines &amp; Tasks</h2>
           <span className="text-xs text-slate-500">{visible.length} activities</span>
         </div>
-        <div className="filter-tabs" aria-label="Deadline filter">
+        <div className={styles.filterTabs} aria-label="Deadline filter">
           {[
             ['upcoming', 'Upcoming'],
             ['past', 'Past due'],
@@ -218,15 +237,15 @@ export default function DashboardPage() {
             <button
               key={value}
               aria-pressed={filter === value}
-              className={filter === value ? 'selected' : ''}
+              className={filter === value ? styles.filterSelected : ''}
               onClick={() => setFilter(value)}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="search-row">
-          <label className="search-box">
+        <div className={styles.searchRow}>
+          <label className={styles.searchBox}>
             <Search size={17} />
             <input
               aria-label="Search activities"
@@ -259,11 +278,13 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-col gap-3" aria-live="polite">
           {busy && !data ? (
-            <div className="empty-state">Loading your activities…</div>
+            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
+              Loading your activities…
+            </div>
           ) : visible.length ? (
             visible.map((item) => <ActivityCard item={item} key={item.id} />)
           ) : (
-            <div className="empty-state">
+            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
               <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 p-4 text-teal-700">
                 <ClipboardList size={26} />
               </div>
@@ -279,6 +300,6 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
-    </main>
+    </Container>
   );
 }

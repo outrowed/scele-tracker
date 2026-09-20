@@ -2,6 +2,7 @@ import { Link, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SiteHeader } from './SiteHeader';
 import { SiteFooter } from './SiteFooter';
+import { Container } from './Container';
 import SignInPage from '../pages/SignInPage';
 import DashboardPage from '../pages/DashboardPage';
 import ActivityDetailsPage from '../pages/ActivityDetailsPage';
@@ -13,12 +14,18 @@ export function AppLayout() {
     <div className="min-h-screen">
       <SiteHeader />
       {error && (
-        <p role="alert" className="notice page-width mt-6">
+        <Container
+          as="p"
+          role="alert"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+        >
           {error}
-        </p>
+        </Container>
       )}
       {loading ? (
-        <main className="page-width py-20">Checking your session…</main>
+        <Container as="main" className="py-20">
+          Checking your session…
+        </Container>
       ) : !user ? (
         <SignInPage />
       ) : (
@@ -30,7 +37,9 @@ export function AppLayout() {
               user.role === 'admin' ? (
                 <AdminPage />
               ) : (
-                <main className="page-width py-20">Administrator access required.</main>
+                <Container as="main" className="py-20">
+                  Administrator access required.
+                </Container>
               )
             }
           />
@@ -38,10 +47,10 @@ export function AppLayout() {
           <Route
             path="*"
             element={
-              <main className="page-width py-20">
+              <Container as="main" className="py-20">
                 <h1>Page not found</h1>
                 <Link to="/">Return to the feed</Link>
-              </main>
+              </Container>
             }
           />
         </Routes>
