@@ -1,6 +1,6 @@
 # Project structure and maintenance
 
-Coursewatch reuses the original message board's UI CAS authentication approach,
+SCELE Tracker reuses the original message board's UI CAS authentication approach,
 not its profile, messaging, avatar or database features. Git history and the MIT
 license remain for attribution; obsolete application modules have been removed.
 

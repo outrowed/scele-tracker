@@ -29,7 +29,7 @@ export default function SignInPage() {
         <div className="mb-7 inline-flex rounded-2xl bg-teal-50 p-4 text-teal-700">
           <ShieldCheck size={30} />
         </div>
-        <h2 className="text-2xl font-semibold">Welcome to Coursewatch</h2>
+        <h2 className="text-2xl font-semibold">Welcome to SCELE Tracker</h2>
         <p className="mt-3 leading-7 text-slate-500">
           Sign in with your Universitas Indonesia account to view the shared course
           tracker.
