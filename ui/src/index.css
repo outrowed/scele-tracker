@@ -142,6 +142,17 @@
   .notice {
     @apply rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900;
   }
+  .notice-stack {
+    @apply flex flex-col gap-3;
+  }
+  .notice-stack:has(*) {
+    @apply mt-6;
+  }
+  .notice-stack:not(:has(*)) {
+    display: none;
+    margin: 0;
+    padding: 0;
+  }
   .empty-state {
     @apply rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500;
   }

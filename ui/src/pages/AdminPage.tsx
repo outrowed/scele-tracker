@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Check, RotateCcw } from 'lucide-react';
+import { resetLocalPreferences } from '../hooks/useDismissible';
 import { api } from '../model';
 
 export default function AdminPage() {
@@ -9,15 +11,26 @@ export default function AdminPage() {
     checkedAt: string | null;
   } | null>(null);
   const [error, setError] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+
   // Request protected diagnostics when this page mounts; the API enforces the admin role.
   useEffect(() => {
     api<NonNullable<typeof data>>('/api/admin/status')
       .then(setData)
       .catch((error) => setError(error.message));
   }, []);
+
+  function handleResetLocalStorage() {
+    resetLocalPreferences();
+    setResetMessage('Local storage and dismissed notices have been reset.');
+    setTimeout(() => setResetMessage(''), 4000);
+  }
+
   return (
     <main className="page-width py-10">
-      <Link to="/">← Activity feed</Link>
+      <Link to="/" className="text-sm font-medium text-teal-700 hover:underline">
+        ← Activity feed
+      </Link>
       <h1 className="page-title">Administration</h1>
       <p className="mt-3 text-slate-500">
         Roles are managed by exact UI SSO username in the server’s users.json file.
@@ -27,21 +40,50 @@ export default function AdminPage() {
           {error}
         </p>
       )}
+
+      {/* Admin actions: Local testing and preferences reset */}
       <section className="side-card mt-6">
-        <h2 className="font-semibold">Source diagnostics</h2>
+        <h2 className="font-semibold text-slate-900">Developer & Admin Controls</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Reset client-side stored data such as dismissed notices, slogans, and local
+          preferences.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={handleResetLocalStorage}
+          >
+            <RotateCcw size={15} />
+            Reset Local Storage / Notices
+          </button>
+          {resetMessage && (
+            <span
+              role="status"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700"
+            >
+              <Check size={14} />
+              {resetMessage}
+            </span>
+          )}
+        </div>
+      </section>
+
+      <section className="side-card mt-6">
+        <h2 className="font-semibold text-slate-900">Source diagnostics</h2>
         {!data ? (
-          <p>Loading…</p>
+          <p className="mt-3 text-sm text-slate-500">Loading…</p>
         ) : (
           <>
-            <p className="my-3">
+            <p className="my-3 text-sm">
               {data.configured ? 'Accounts configured' : 'No accounts configured'}
             </p>
             {data.sources.map((source) => (
-              <p key={source.id} className="my-2">
+              <p key={source.id} className="my-2 text-sm text-slate-700">
                 {source.id} · {source.state}
               </p>
             ))}
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-xs text-slate-500">
               Last checked: {data.checkedAt || 'Not yet'} · Shared cache refreshes after
               ten minutes of staleness while in use.
             </p>
