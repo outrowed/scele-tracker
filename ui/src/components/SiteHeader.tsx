@@ -11,7 +11,8 @@ export function SiteHeader() {
           <span className="brand-icon">
             <Layers3 size={23} />
           </span>
-          SCELE Tracker<span className="brand-tag">CS UI</span>
+          <span className="whitespace-nowrap">SCELE Tracker</span>
+          <span className="brand-tag">Made with ❤️ by #CSUI2026</span>
         </Link>
         {user ? (
           <div className="flex items-center gap-4">

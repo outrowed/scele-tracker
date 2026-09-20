@@ -1,4 +1,5 @@
-import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
+import uiLogo from '../assets/ui-logo.svg';
 
 export default function SignInPage() {
   // Read CAS error parameter directly from the browser window URL to display sign-in failures.
@@ -26,8 +27,9 @@ export default function SignInPage() {
         </div>
       </section>
       <section className="login-card">
-        <div className="mb-7 inline-flex rounded-2xl bg-teal-50 p-4 text-teal-700">
-          <ShieldCheck size={30} />
+        {/* Centered UI Makara logo without background boxing */}
+        <div className="mb-6 flex justify-center">
+          <img src={uiLogo} alt="Universitas Indonesia" className="h-20 w-auto" />
         </div>
         <h2 className="text-2xl font-semibold">Welcome to SCELE Tracker</h2>
         <p className="mt-3 leading-7 text-slate-500">
