@@ -87,20 +87,30 @@ export function SectionKicker({ children, className = '' }: SectionKickerProps) 
 
 export interface BackLinkProps {
   to?: string;
+  onClick?: () => void;
   children?: ReactNode;
   className?: string;
 }
 
 export function BackLink({
-  to = '/',
-  children = 'Back to activity feed',
+  to,
+  onClick,
+  children = 'Back',
   className = '',
 }: BackLinkProps) {
+  const commonClasses = `inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 transition hover:text-teal-800 hover:underline cursor-pointer ${className}`;
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={commonClasses}>
+        <ChevronLeft size={16} />
+        <span>{children}</span>
+      </button>
+    );
+  }
+
   return (
-    <Link
-      to={to}
-      className={`inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 transition hover:text-teal-800 hover:underline ${className}`}
-    >
+    <Link to={to || '/'} className={commonClasses}>
       <ChevronLeft size={16} />
       <span>{children}</span>
     </Link>
@@ -113,6 +123,7 @@ export interface PageHeaderProps {
   kicker?: ReactNode;
   backTo?: string;
   backLabel?: string;
+  onBack?: () => void;
   action?: ReactNode;
   className?: string;
 }
@@ -122,15 +133,18 @@ export function PageHeader({
   description,
   kicker,
   backTo,
-  backLabel = 'Back to activity feed',
+  backLabel = 'Back',
+  onBack,
   action,
   className = '',
 }: PageHeaderProps) {
   return (
     <header className={`mb-6 md:mb-8 ${className}`}>
-      {backTo && (
+      {(onBack || backTo) && (
         <div className="mb-3">
-          <BackLink to={backTo}>{backLabel}</BackLink>
+          <BackLink to={backTo} onClick={onBack}>
+            {backLabel}
+          </BackLink>
         </div>
       )}
       {kicker && <div className="mb-2">{kicker}</div>}

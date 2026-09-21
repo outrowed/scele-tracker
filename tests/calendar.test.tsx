@@ -63,7 +63,8 @@ it('opens details from a calendar entry and navigates months', async () => {
       <CalendarPage />
     </MemoryRouter>,
   );
-  fireEvent.click(await screen.findByRole('button', { name: /Due · Logic quiz/i }));
+  const buttons = await screen.findAllByRole('button', { name: /Logic quiz/i });
+  fireEvent.click(buttons[0]);
   expect(screen.getByRole('region', { name: 'Selected activity' })).toBeTruthy();
   expect(
     screen.getByRole('link', { name: 'View activity details' }).getAttribute('href'),

@@ -165,7 +165,7 @@ export function activityRange(item: Activity) {
   return { start: start > end ? endKey : dayKey(start), end: endKey };
 }
 
-export function weekRanges(items: Activity[], days: PlannerDay[]) {
+export function weekRanges(items: Activity[], days: Array<{ dateKey: string }>) {
   if (!days.length) return [];
   const ranges = items
     .flatMap((item) => {

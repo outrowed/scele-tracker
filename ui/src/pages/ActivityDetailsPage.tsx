@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { api, dateLabel, type Activity } from '../model';
 import { Container } from '../components/Container';
@@ -14,6 +14,7 @@ import {
 
 export default function ActivityDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [item, setItem] = useState<Activity | null>(null);
   const [error, setError] = useState('');
 
@@ -48,8 +49,8 @@ export default function ActivityDetailsPage() {
       ) : (
         <>
           <PageHeader
-            backTo="/"
-            backLabel="Back to activity feed"
+            onBack={() => navigate(-1)}
+            backLabel="Back"
             kicker={
               <SectionKicker>
                 {item.courseName} · {item.kind}
