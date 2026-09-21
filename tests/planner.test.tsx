@@ -203,7 +203,9 @@ describe('CoursesPage component', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('All Course Activities')).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Calculus 1', level: 3 }),
+    ).toBeTruthy();
     expect(await screen.findByText('Calculus Quiz 1')).toBeTruthy();
   });
 });
