@@ -95,8 +95,21 @@ export function WeekBar({
                 onClick={() =>
                   onSelectDay(selectedDayKey === day.dateKey ? null : day.dateKey)
                 }
-                className={`flex items-center justify-between px-3 py-3 text-sm ${selectedDayKey === day.dateKey ? 'bg-teal-100 text-teal-900' : day.isToday ? 'bg-teal-50 text-teal-800' : 'bg-slate-50 text-slate-600'} hover:bg-teal-50`}
+                className={`relative flex items-center justify-between px-3 py-3 text-sm transition ${
+                  selectedDayKey === day.dateKey
+                    ? 'bg-teal-100 text-teal-900'
+                    : day.isToday
+                      ? 'bg-teal-50 text-teal-800'
+                      : 'bg-slate-50 text-slate-600 hover:bg-teal-50'
+                }`}
               >
+                {/* Top accent bar for today */}
+                {day.isToday && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 top-0 h-1 bg-teal-600"
+                  />
+                )}
                 <span>{day.dayName}</span>
                 <span className="font-semibold">
                   {day.dayNumber} {day.monthName}
@@ -107,19 +120,25 @@ export function WeekBar({
           <div className="relative">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200"
+              className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 select-none"
             >
               {days.map((day) => (
                 <div
                   key={day.dateKey}
-                  className={
+                  className={`flex items-center justify-center ${
                     selectedDayKey === day.dateKey
                       ? 'bg-teal-100/40'
                       : day.isToday
                         ? 'bg-teal-50/40'
                         : ''
-                  }
-                />
+                  }`}
+                >
+                  {day.isToday && (
+                    <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 uppercase">
+                      TODAY
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
             <div
