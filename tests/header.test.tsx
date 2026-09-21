@@ -97,6 +97,9 @@ describe('SiteHeader mobile hamburger navigation', () => {
     expect(navScope.getByRole('link', { name: /calendar/i }).getAttribute('href')).toBe(
       '/calendar',
     );
+    expect(navScope.getByRole('link', { name: /free rooms/i }).getAttribute('href')).toBe(
+      '/rooms',
+    );
     expect(
       navScope.getByRole('link', { name: /administration/i }).getAttribute('href'),
     ).toBe('/admin');

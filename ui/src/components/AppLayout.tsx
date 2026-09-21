@@ -10,6 +10,7 @@ import CoursesPage from '../pages/CoursesPage';
 import ActivityDetailsPage from '../pages/ActivityDetailsPage';
 import AdminPage from '../pages/AdminPage';
 import CalendarPage from '../pages/CalendarPage';
+import FreeRoomsPage from '../pages/FreeRoomsPage';
 
 export function AppLayout() {
   const { user, loading, error } = useAuth();
@@ -41,6 +42,7 @@ export function AppLayout() {
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/rooms" element={<FreeRoomsPage />} />
           <Route
             path="/admin"
             element={

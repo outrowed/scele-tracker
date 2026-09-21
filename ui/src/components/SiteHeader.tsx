@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Calendar, Layers3, LogOut, Menu, Shield, User, X } from 'lucide-react';
+import {
+  BookOpen,
+  Calendar,
+  DoorOpen,
+  Layers3,
+  LogOut,
+  Menu,
+  Shield,
+  User,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Container } from './Container';
 import { Button } from './Button';
@@ -19,6 +29,7 @@ export function SiteHeader() {
   const isFeedActive = location.pathname === '/';
   const isCoursesActive = location.pathname.startsWith('/courses');
   const isCalendarActive = location.pathname.startsWith('/calendar');
+  const isRoomsActive = location.pathname.startsWith('/rooms');
   const isAdminActive = location.pathname.startsWith('/admin');
 
   const desktopNavLinkClass = (isActive: boolean) =>
@@ -103,6 +114,17 @@ export function SiteHeader() {
                     }
                   />
                   <span>Calendar</span>
+                </Link>
+                <Link
+                  to="/rooms"
+                  aria-current={isRoomsActive ? 'page' : undefined}
+                  className={desktopNavLinkClass(isRoomsActive)}
+                >
+                  <DoorOpen
+                    size={16}
+                    className={isRoomsActive ? 'text-teal-700' : 'text-slate-400'}
+                  />
+                  <span>Free Rooms</span>
                 </Link>
 
                 {user.role === 'admin' && (
@@ -232,6 +254,18 @@ export function SiteHeader() {
                 }
               />
               Calendar
+            </Link>
+            <Link
+              to="/rooms"
+              aria-current={isRoomsActive ? 'page' : undefined}
+              onClick={() => setIsOpen(false)}
+              className={mobileNavLinkClass(isRoomsActive)}
+            >
+              <DoorOpen
+                size={18}
+                className={isRoomsActive ? 'text-teal-700' : 'text-slate-400'}
+              />
+              Free Rooms
             </Link>
             {user.role === 'admin' && (
               <Link
