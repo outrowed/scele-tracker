@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
+  weekRanges,
+  compareNewestFirst,
   dayKey,
   deadlineTimeState,
   formatMonthHeading,
@@ -54,6 +56,32 @@ describe('planner helper utilities', () => {
     expect(formatMonthHeading('undated')).toBe('No Deadline / Undated');
   });
 
+  it('sorts activities with compareNewestFirst (newest deadlines first, quizzes prioritized on tie, undated last)', () => {
+    const olderQuiz: Activity = { ...quizItem, id: 'quiz-old', dueAt: 1000 };
+    const newerQuiz: Activity = { ...quizItem, id: 'quiz-new', dueAt: 2000 };
+    const sameTimeAssignment: Activity = {
+      ...assignmentItem,
+      id: 'assign-same',
+      dueAt: 2000,
+    };
+    const undatedItem: Activity = {
+      ...assignmentItem,
+      id: 'undated-item',
+      dueAt: null,
+      opensAt: null,
+    };
+
+    const sorted = [olderQuiz, undatedItem, sameTimeAssignment, newerQuiz].sort(
+      compareNewestFirst,
+    );
+
+    // newerQuiz and sameTimeAssignment have dueAt=2000; quiz comes first
+    expect(sorted[0].id).toBe('quiz-new');
+    expect(sorted[1].id).toBe('assign-same');
+    expect(sorted[2].id).toBe('quiz-old');
+    expect(sorted[3].id).toBe('undated-item');
+  });
+
   it('determines deadlineTimeState properly based on reference timestamp', () => {
     const dueTime = quizItem.dueAt!;
     const dueDayStr = dayKey(dueTime);
@@ -94,9 +122,9 @@ describe('planner helper utilities', () => {
 describe('WeekBar component', () => {
   it('renders week days and triggers day selection and navigation callbacks', () => {
     const onSelectDay = vi.fn();
-    const onPrevWeek = vi.fn();
-    const onNextWeek = vi.fn();
-    const onCurrentWeek = vi.fn();
+    const onPrevDay = vi.fn();
+    const onNextDay = vi.fn();
+    const onToday = vi.fn();
 
     const { days, weekLabel } = getWeekDays(quizItem.dueAt!, 0, [quizItem]);
 
@@ -104,56 +132,57 @@ describe('WeekBar component', () => {
       <WeekBar
         days={days}
         weekLabel={weekLabel}
-        weekOffset={1}
+        dayOffset={1}
         selectedDayKey={null}
         onSelectDay={onSelectDay}
-        onPrevWeek={onPrevWeek}
-        onNextWeek={onNextWeek}
-        onCurrentWeek={onCurrentWeek}
+        onPrevDay={onPrevDay}
+        onNextDay={onNextDay}
+        onToday={onToday}
       />,
     );
 
     expect(screen.getByText('Weekly Schedule')).toBeTruthy();
     expect(screen.getByText(weekLabel)).toBeTruthy();
 
-    // Check quiz badge
-    expect(screen.getByTitle(/1 quiz/i)).toBeTruthy();
-
-    // Click day
-    const dayElement = screen.getByTitle(/1 quiz/i).closest('div');
-    if (dayElement) {
-      fireEvent.click(dayElement);
-      expect(onSelectDay).toHaveBeenCalled();
-    }
+    expect(screen.getByRole('link', { name: /Calculus Quiz 1/ })).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: `Filter activities on ${days[0].dateKey}` }),
+    );
+    expect(onSelectDay).toHaveBeenCalledWith(days[0].dateKey);
 
     // Click navigation buttons
-    fireEvent.click(screen.getByRole('button', { name: /previous week/i }));
-    expect(onPrevWeek).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /previous day/i }));
+    expect(onPrevDay).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /next week/i }));
-    expect(onNextWeek).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /next day/i }));
+    expect(onNextDay).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /current week/i }));
-    expect(onCurrentWeek).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /today/i }));
+    expect(onToday).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('TabularActivityList component', () => {
-  it('renders items in table format with color-coded type badges and month separators', () => {
+  it('renders items in table format with color-coded type badges, unified month header, and task breakdown', () => {
+    const pastQuiz: Activity = {
+      ...quizItem,
+      id: 'past-quiz',
+      name: 'Past Quiz 1',
+      dueAt: quizItem.dueAt! - 7200,
+    };
+
     render(
       <MemoryRouter>
-        <TabularActivityList
-          items={[quizItem, assignmentItem]}
-          now={quizItem.dueAt! - 3600}
-        />
+        <TabularActivityList items={[quizItem, pastQuiz]} now={quizItem.dueAt! - 3600} />
       </MemoryRouter>,
     );
 
     expect(screen.getByText('Calculus Quiz 1')).toBeTruthy();
-    expect(screen.getByText('Programming Lab 1')).toBeTruthy();
-    expect(screen.getByText('Quiz')).toBeTruthy();
-    expect(screen.getByText('Assignment')).toBeTruthy();
+    expect(screen.getByText('Past Quiz 1')).toBeTruthy();
+    expect(screen.getAllByText('Quiz').length).toBe(2);
     expect(screen.getByText('September 2026')).toBeTruthy();
+    expect(screen.getByText('1 active task · 1 past due task')).toBeTruthy();
+    expect(screen.getByText('Past due')).toBeTruthy();
   });
 });
 
@@ -176,5 +205,55 @@ describe('CoursesPage component', () => {
 
     expect(await screen.findByText('All Course Activities')).toBeTruthy();
     expect(await screen.findByText('Calculus Quiz 1')).toBeTruthy();
+  });
+});
+
+describe('weekly range placement', () => {
+  it('clips crossing ranges, separates overlaps, and omits undated/outside items', () => {
+    const timestamp = (day: number) => new Date(2026, 8, day, 12).getTime() / 1000;
+    const { days } = getWeekDays(timestamp(23));
+    const make = (
+      id: string,
+      opensAt: number | null,
+      dueAt: number | null,
+    ): Activity => ({ ...quizItem, id, opensAt, dueAt });
+    const result = weekRanges(
+      [
+        make('crossing', timestamp(18), timestamp(30)),
+        make('short', timestamp(22), timestamp(23)),
+        make('same-day', timestamp(24), timestamp(24)),
+        make('due-only', null, timestamp(25)),
+        make('open-only', timestamp(26), null),
+        make('none', null, null),
+        make('outside', timestamp(1), timestamp(2)),
+      ],
+      days,
+    );
+    expect(result).toHaveLength(5);
+    expect(result[0]).toMatchObject({
+      start: 0,
+      end: 6,
+      lane: 0,
+      continuesBefore: true,
+      continuesAfter: true,
+    });
+    expect(result.find((r) => r.item.id === 'short')).toMatchObject({
+      start: 1,
+      end: 2,
+      lane: 1,
+    });
+    expect(result.find((r) => r.item.id === 'same-day')).toMatchObject({
+      start: 3,
+      end: 3,
+      lane: 1,
+    });
+    expect(result.find((r) => r.item.id === 'due-only')).toMatchObject({
+      start: 4,
+      end: 4,
+    });
+    expect(result.find((r) => r.item.id === 'open-only')).toMatchObject({
+      start: 5,
+      end: 5,
+    });
   });
 });

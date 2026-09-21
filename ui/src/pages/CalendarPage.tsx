@@ -56,7 +56,7 @@ export default function CalendarPage() {
   }).format(new Date(`${month}-01T00:00:00Z`));
 
   return (
-    <Container as="main" className="py-10">
+    <Container as="main" className="py-10 md:py-14">
       <PageHeader
         title="Course calendar"
         description="Assignment and quiz dates in your local time. Availability spans opening to due date; cut-off dates are marked separately."

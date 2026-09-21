@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   AlertCircle,
-  BookOpen,
-  CalendarDays,
   ClipboardList,
-  Clock3,
   Layers3,
   Loader2,
   RefreshCw,
   Search,
   Sparkles,
-  Timer,
 } from 'lucide-react';
 import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
@@ -19,22 +15,21 @@ import { PageHeader, SectionTitle } from '../components/Typography';
 import { WeekBar } from '../components/WeekBar';
 import { TabularActivityList } from '../components/TabularActivityList';
 import { useDismissible } from '../hooks/useDismissible';
-import { api, status, type Snapshot } from '../model';
-import { dayKey, getWeekDays } from '../planner';
+import { api, type Snapshot } from '../model';
+import { activityRange, compareNewestFirst, getWeekDays } from '../planner';
 import styles from './DashboardPage.module.css';
 
 export default function DashboardPage() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState('upcoming');
   const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('all');
   const [now, setNow] = useState(Date.now() / 1000);
 
   // Week planner state
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [dayOffset, setDayOffset] = useState(0);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
   const [sloganDismissed, dismissSlogan] = useDismissible('dashboard_slogan');
@@ -84,47 +79,38 @@ export default function DashboardPage() {
   }, []);
 
   const items = data?.activities || [];
-  const counts = {
-    upcoming: items.filter((item) => status(item, now) === 'upcoming').length,
-    past: items.filter((item) => status(item, now) === 'past').length,
-    undated: items.filter((item) => status(item, now) === 'undated').length,
-  };
-
   // Multiple activity variants share a course; list each course only once in the filter.
   const courses = [
     ...new Map(items.map((item) => [item.courseId, item.courseName])).entries(),
   ];
 
   // Week days with quizzes and assignments grouped
-  const weekInfo = getWeekDays(now, weekOffset, items);
+  const weekInfo = getWeekDays(now, dayOffset, items);
 
   const visible = items
     .filter(
       (item) =>
-        // Deadline tab filter
-        (filter === 'all' || status(item, now) === filter) &&
         // Kind filter
         (kind === 'all' || item.kind === kind) &&
         // Course filter
         (course === 'all' || String(item.courseId) === course) &&
         // Day selection from week bar filter
-        (!selectedDayKey || (item.dueAt && dayKey(item.dueAt) === selectedDayKey)) &&
+        (!selectedDayKey ||
+          (() => {
+            const range = activityRange(item);
+            return range && range.start <= selectedDayKey && range.end >= selectedDayKey;
+          })()) &&
         // Search query
         `${item.name} ${item.courseName}`.toLowerCase().includes(query.toLowerCase()),
     )
-    // Upcoming deadlines ascending, past deadlines descending, undated last
-    .sort((a, b) => {
-      if (filter === 'past') {
-        return (b.dueAt || 0) - (a.dueAt || 0);
-      }
-      return (a.dueAt || Infinity) - (b.dueAt || Infinity);
-    });
+    // Sort items by newest first (newest deadlines first, quizzes prioritized on same deadline, undated last)
+    .sort(compareNewestFirst);
 
   return (
     <Container as="main" className="py-10 md:py-14">
       {/* Unified page header */}
       <PageHeader
-        title="Course Activity Planner"
+        title="Activity feed"
         description="Plan your quizzes, assignments, and deadlines with the weekly schedule and activity table."
         action={
           <Button
@@ -210,90 +196,32 @@ export default function DashboardPage() {
       {/* Top weekly schedule bar */}
       <section className="my-8" aria-label="Weekly planner">
         <WeekBar
+          activities={items}
           days={weekInfo.days}
           weekLabel={weekInfo.weekLabel}
-          weekOffset={weekOffset}
+          dayOffset={dayOffset}
           selectedDayKey={selectedDayKey}
           onSelectDay={(key) => setSelectedDayKey(key)}
-          onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
-          onNextWeek={() => setWeekOffset((prev) => prev + 1)}
-          onCurrentWeek={() => setWeekOffset(0)}
+          onPrevDay={() => setDayOffset((prev) => prev - 1)}
+          onNextDay={() => setDayOffset((prev) => prev + 1)}
+          onToday={() => setDayOffset(0)}
         />
-      </section>
-
-      {/* Quick stats grid */}
-      <section
-        className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5"
-        aria-label="Activity summary"
-      >
-        {[
-          { icon: Clock3, title: 'Upcoming', count: counts.upcoming, tab: 'upcoming' },
-          { icon: Timer, title: 'Past due', count: counts.past, tab: 'past' },
-          { icon: BookOpen, title: 'Courses', count: courses.length, tab: 'all' },
-          {
-            icon: CalendarDays,
-            title: 'Without dates',
-            count: counts.undated,
-            tab: 'undated',
-          },
-        ].map(({ icon: Icon, title, count, tab }) => {
-          return (
-            <button
-              key={title}
-              className="rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-teal-400 shadow-xs"
-              onClick={() => {
-                setFilter(tab);
-                setSelectedDayKey(null);
-              }}
-            >
-              <span className="flex items-center justify-between text-sm text-slate-500">
-                {title}
-                <Icon size={18} />
-              </span>
-              <span className="mt-4 block text-3xl font-semibold tracking-tight">
-                {busy && !data ? '—' : count}
-              </span>
-            </button>
-          );
-        })}
       </section>
 
       {/* Main activities section with table layout */}
       <section className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle>Deadlines &amp; Tasks</SectionTitle>
-          <div className="flex items-center gap-2">
-            {selectedDayKey && (
+          <SectionTitle>Activities</SectionTitle>
+          {selectedDayKey && (
+            <div className="flex items-center gap-2">
               <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
                 Day: {selectedDayKey}
               </span>
-            )}
-            <span className="text-xs text-slate-500">{visible.length} activities</span>
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className={styles.filterTabs} aria-label="Deadline filter">
-          {[
-            ['upcoming', 'Upcoming'],
-            ['past', 'Past due'],
-            ['undated', 'No date'],
-            ['all', 'All'],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              aria-pressed={filter === value}
-              className={filter === value ? styles.filterSelected : ''}
-              onClick={() => {
-                setFilter(value);
-                setSelectedDayKey(null);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.searchRow}>
+        <div className={`${styles.searchRow} mt-4`}>
           <label className={styles.searchBox}>
             <Search size={17} />
             <input

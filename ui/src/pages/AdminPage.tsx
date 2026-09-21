@@ -30,7 +30,7 @@ export default function AdminPage() {
   }
 
   return (
-    <Container as="main" className="py-10">
+    <Container as="main" className="py-10 md:py-14">
       <PageHeader
         title="Administration"
         description="Roles are managed by exact UI SSO username in the server's users.json file."

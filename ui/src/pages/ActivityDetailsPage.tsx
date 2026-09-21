@@ -35,7 +35,7 @@ export default function ActivityDetailsPage() {
   }, [id]);
 
   return (
-    <Container as="main" className="py-10">
+    <Container as="main" className="py-10 md:py-14">
       {error ? (
         <p
           role="alert"

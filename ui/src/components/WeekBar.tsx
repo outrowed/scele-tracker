@@ -1,29 +1,42 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Activity } from '../model';
-import type { PlannerDay } from '../planner';
+import { weekRanges, type PlannerDay } from '../planner';
+import { dateLabel } from '../model';
 
 interface WeekBarProps {
   days: PlannerDay[];
+  activities?: Activity[];
   weekLabel: string;
-  weekOffset: number;
+  dayOffset: number;
   selectedDayKey: string | null;
   onSelectDay: (dateKey: string | null) => void;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-  onCurrentWeek: () => void;
+  onPrevDay: () => void;
+  onNextDay: () => void;
+  onToday: () => void;
   onSelectActivity?: (item: Activity) => void;
 }
 
 export function WeekBar({
   days,
+  activities,
+  onSelectActivity,
   weekLabel,
-  weekOffset,
+  dayOffset,
   selectedDayKey,
   onSelectDay,
-  onPrevWeek,
-  onNextWeek,
-  onCurrentWeek,
+  onPrevDay,
+  onNextDay,
+  onToday,
 }: WeekBarProps) {
+  const items = activities ?? [
+    ...new Map(
+      days
+        .flatMap((day) => [...day.quizzes, ...day.assignments])
+        .map((item) => [item.id, item]),
+    ).values(),
+  ];
+  const ranges = weekRanges(items, days);
+  const lanes = Math.max(3, ...ranges.map((range) => range.lane + 1));
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:p-5">
       {/* Header controls for week navigation */}
@@ -37,27 +50,27 @@ export function WeekBar({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {weekOffset !== 0 && (
+          {dayOffset !== 0 && (
             <button
               type="button"
-              onClick={onCurrentWeek}
+              onClick={onToday}
               className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700"
             >
-              Current week
+              Today
             </button>
           )}
           <button
             type="button"
-            onClick={onPrevWeek}
-            aria-label="Previous week"
+            onClick={onPrevDay}
+            aria-label="Previous day"
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-teal-400 hover:text-teal-700"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             type="button"
-            onClick={onNextWeek}
-            aria-label="Next week"
+            onClick={onNextDay}
+            aria-label="Next day"
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-teal-400 hover:text-teal-700"
           >
             <ChevronRight size={16} />
@@ -65,87 +78,107 @@ export function WeekBar({
         </div>
       </div>
 
-      {/* 7-day grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7 md:gap-3">
-        {days.map((day) => {
-          const isSelected = selectedDayKey === day.dateKey;
-          const totalTasks = day.quizzes.length + day.assignments.length;
-
-          return (
+      <p className="mb-3 text-xs text-slate-500">
+        Bars span opening to closing/due date, inclusive. Arrows indicate continuation
+        outside this week. A single known date is shown on that day; cut-off dates do not
+        extend the bar.
+      </p>
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="min-w-[700px]">
+          <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200">
+            {days.map((day) => (
+              <button
+                key={day.dateKey}
+                type="button"
+                aria-label={`Filter activities on ${day.dateKey}`}
+                aria-pressed={selectedDayKey === day.dateKey}
+                onClick={() =>
+                  onSelectDay(selectedDayKey === day.dateKey ? null : day.dateKey)
+                }
+                className={`flex items-center justify-between px-3 py-3 text-sm ${selectedDayKey === day.dateKey ? 'bg-teal-100 text-teal-900' : day.isToday ? 'bg-teal-50 text-teal-800' : 'bg-slate-50 text-slate-600'} hover:bg-teal-50`}
+              >
+                <span>{day.dayName}</span>
+                <span className="font-semibold">
+                  {day.dayNumber} {day.monthName}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="relative">
             <div
-              key={day.dateKey}
-              onClick={() => onSelectDay(isSelected ? null : day.dateKey)}
-              className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3 transition ${
-                isSelected
-                  ? 'border-teal-600 bg-teal-50/70 ring-2 ring-teal-600 ring-offset-1'
-                  : day.isToday
-                    ? 'border-teal-300 bg-teal-50/30 hover:border-teal-500 hover:bg-teal-50/50'
-                    : 'border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-50'
-              }`}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200"
             >
-              {/* Day title & number */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {day.dayName}
-                </span>
-                <span
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                    day.isToday
-                      ? 'bg-teal-700 text-white'
-                      : isSelected
-                        ? 'bg-teal-100 text-teal-800'
-                        : 'text-slate-700'
-                  }`}
-                >
-                  {day.dayNumber}
-                </span>
-              </div>
-
-              {/* Badges / indicators for blue quizzes and green assignments */}
-              <div className="mt-3 flex min-h-[42px] flex-col gap-1.5">
-                {totalTasks === 0 ? (
-                  <span className="text-[11px] text-slate-400">No deadlines</span>
-                ) : (
-                  <>
-                    {day.quizzes.length > 0 && (
-                      <div
-                        className="flex items-center justify-between rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700 border border-blue-200/60"
-                        title={`${day.quizzes.length} quiz${day.quizzes.length > 1 ? 'zes' : ''}`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                          <span>Quiz</span>
-                        </span>
-                        <span className="font-bold">{day.quizzes.length}</span>
-                      </div>
-                    )}
-                    {day.assignments.length > 0 && (
-                      <div
-                        className="flex items-center justify-between rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 border border-emerald-200/60"
-                        title={`${day.assignments.length} assignment${day.assignments.length > 1 ? 's' : ''}`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                          <span>Assignment</span>
-                        </span>
-                        <span className="font-bold">{day.assignments.length}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Status pill or click hint */}
-              <div className="mt-2 text-right">
-                {day.isToday && (
-                  <span className="inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-700 bg-teal-100/80">
-                    Today
-                  </span>
-                )}
-              </div>
+              {days.map((day) => (
+                <div
+                  key={day.dateKey}
+                  className={
+                    selectedDayKey === day.dateKey
+                      ? 'bg-teal-100/40'
+                      : day.isToday
+                        ? 'bg-teal-50/40'
+                        : ''
+                  }
+                />
+              ))}
             </div>
-          );
-        })}
+            <div
+              className="relative grid grid-cols-7 gap-y-2 py-3"
+              style={{ gridTemplateRows: `repeat(${lanes}, 36px)` }}
+            >
+              {ranges.map(
+                ({ item, start, end, lane, continuesBefore, continuesAfter }) => {
+                  const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(item.dueAt)}`;
+                  const className = `mx-1 flex min-w-0 items-center gap-1 rounded-md border px-2 text-left text-xs font-medium ${item.kind === 'quiz' ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200' : 'border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`;
+                  const style = {
+                    gridColumn: `${start + 1} / ${end + 2}`,
+                    gridRow: lane + 1,
+                  };
+                  const content = (
+                    <>
+                      {continuesBefore && <span aria-hidden="true">←</span>}
+                      <span className="truncate">{item.name}</span>
+                      {continuesAfter && (
+                        <span className="ml-auto" aria-hidden="true">
+                          →
+                        </span>
+                      )}
+                    </>
+                  );
+                  return onSelectActivity ? (
+                    <button
+                      key={item.id}
+                      type="button"
+                      title={label}
+                      aria-label={label}
+                      className={className}
+                      style={style}
+                      onClick={() => onSelectActivity(item)}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <a
+                      key={item.id}
+                      href={`/activities/${encodeURIComponent(item.id)}`}
+                      title={label}
+                      aria-label={label}
+                      className={className}
+                      style={style}
+                    >
+                      {content}
+                    </a>
+                  );
+                },
+              )}
+              {!ranges.length && (
+                <p className="col-span-7 px-4 text-sm text-slate-500">
+                  No activity ranges this week.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Legend & Filter indicator */}
