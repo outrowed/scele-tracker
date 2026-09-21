@@ -1,16 +1,21 @@
 node_modules/
 dist/
+
 .env
 .env.*
 !env.example
-config/accounts.json
-config/*.private.json
+
 coverage/
 test-results/
 *.bak.*
+
 db/*.sqlite*
 db/avatars/
 
+config/accounts.json
+config/*.private.json
 config/users.json
 
 data/
+
+*.log
