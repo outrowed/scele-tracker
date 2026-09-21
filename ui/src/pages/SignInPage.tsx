@@ -27,7 +27,7 @@ export default function SignInPage() {
             <Check size={17} /> Courses in one place
           </span>
           <span className="flex items-center gap-2">
-            <Check size={17} /> Deadlines in WIB
+            <Check size={17} /> Deadlines in your local time
           </span>
         </div>
       </section>

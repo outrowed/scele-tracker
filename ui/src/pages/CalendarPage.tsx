@@ -59,7 +59,7 @@ export default function CalendarPage() {
     <Container as="main" className="py-10">
       <PageHeader
         title="Course calendar"
-        description="Assignment and quiz dates in WIB. Availability spans opening to due date; cut-off dates are marked separately."
+        description="Assignment and quiz dates in your local time. Availability spans opening to due date; cut-off dates are marked separately."
       />
 
       {error && (

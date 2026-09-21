@@ -27,13 +27,12 @@ export function status(item: Activity, now = Date.now() / 1000) {
 export function dateLabel(value: number | null) {
   return value
     ? new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Jakarta',
         day: 'numeric',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }).format(value * 1000) + ' WIB'
+      }).format(value * 1000)
     : 'Not available';
 }
 export function remaining(value: number | null, now = Date.now() / 1000) {

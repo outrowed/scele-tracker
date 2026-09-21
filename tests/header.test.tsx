@@ -46,6 +46,9 @@ describe('SiteHeader mobile hamburger navigation', () => {
     expect(
       navScope.getByRole('link', { name: /activity feed/i }).getAttribute('href'),
     ).toBe('/');
+    expect(navScope.getByRole('link', { name: /courses/i }).getAttribute('href')).toBe(
+      '/courses',
+    );
     expect(navScope.getByRole('link', { name: /calendar/i }).getAttribute('href')).toBe(
       '/calendar',
     );

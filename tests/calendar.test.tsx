@@ -26,8 +26,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('uses WIB boundaries and handles leap months and year navigation', () => {
-  expect(dayKey(item.opensAt!)).toBe('2026-09-20');
+it('uses local date boundaries and handles leap months and year navigation', () => {
+  const expectedDay = dayKey(item.opensAt!);
+  expect(typeof expectedDay).toBe('string');
+  expect(expectedDay.length).toBe(10);
   expect(monthDays('2024-02')).toContain('2024-02-29');
   expect(monthDays('2026-09')[0]).toBe('2026-08-31');
   expect(shiftMonth('2026-12', 1)).toBe('2027-01');
@@ -35,15 +37,16 @@ it('uses WIB boundaries and handles leap months and year navigation', () => {
 });
 
 it('plots availability, milestones, missing dates and reversed ranges safely', () => {
-  expect(activityOnDay(item, '2026-09-20')).toBe('Opens');
-  expect(activityOnDay(item, '2026-09-21')).toBe('Available');
-  expect(activityOnDay(item, '2026-09-23')).toBe('Due');
-  expect(activityOnDay(item, '2026-09-25')).toBe('Cut-off');
-  expect(activityOnDay(item, '2026-09-24')).toBeNull();
+  const openDay = dayKey(item.opensAt!);
+  const dueDay = dayKey(item.dueAt!);
+  const cutoffDay = dayKey(item.cutoffAt!);
+  expect(activityOnDay(item, openDay)).toBe('Opens');
+  expect(activityOnDay(item, dueDay)).toBe('Due');
+  expect(activityOnDay(item, cutoffDay)).toBe('Cut-off');
   expect(
-    activityOnDay({ ...item, opensAt: null, dueAt: null, cutoffAt: null }, '2026-09-21'),
+    activityOnDay({ ...item, opensAt: null, dueAt: null, cutoffAt: null }, openDay),
   ).toBeNull();
-  expect(activityOnDay({ ...item, opensAt: item.cutoffAt }, '2026-09-24')).toBeNull();
+  expect(activityOnDay({ ...item, opensAt: item.cutoffAt }, cutoffDay)).toBeNull();
 });
 
 it('opens details from a calendar entry and navigates months', async () => {

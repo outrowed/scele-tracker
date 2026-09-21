@@ -2,28 +2,26 @@ import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   BookOpen,
-  CalendarDays,
   ClipboardList,
-  Clock3,
   Layers3,
   Loader2,
   RefreshCw,
   Search,
   Sparkles,
   Timer,
+  Clock3,
+  CalendarDays,
 } from 'lucide-react';
+import { ActivityCard } from '../components/ActivityCard';
 import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
 import { PageHeader, SectionTitle } from '../components/Typography';
-import { WeekBar } from '../components/WeekBar';
-import { TabularActivityList } from '../components/TabularActivityList';
 import { useDismissible } from '../hooks/useDismissible';
 import { api, status, type Snapshot } from '../model';
-import { dayKey, getWeekDays } from '../planner';
 import styles from './DashboardPage.module.css';
 
-export default function DashboardPage() {
+export default function CoursesPage() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,14 +31,9 @@ export default function DashboardPage() {
   const [course, setCourse] = useState('all');
   const [now, setNow] = useState(Date.now() / 1000);
 
-  // Week planner state
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const [sloganDismissed, dismissSlogan] = useDismissible('courses_slogan');
+  const [guideDismissed, dismissGuide] = useDismissible('courses_guide');
 
-  const [sloganDismissed, dismissSlogan] = useDismissible('dashboard_slogan');
-  const [guideDismissed, dismissGuide] = useDismissible('dashboard_guide');
-
-  // Fetch the shared snapshot (which may trigger server sync) and update this page's feed.
   async function refresh() {
     setBusy(true);
     setError('');
@@ -53,7 +46,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Poll only while visible; remove the listener and timer when leaving the dashboard.
   useEffect(() => {
     let active = true;
     let inFlight = false;
@@ -90,42 +82,29 @@ export default function DashboardPage() {
     undated: items.filter((item) => status(item, now) === 'undated').length,
   };
 
-  // Multiple activity variants share a course; list each course only once in the filter.
   const courses = [
     ...new Map(items.map((item) => [item.courseId, item.courseName])).entries(),
   ];
 
-  // Week days with quizzes and assignments grouped
-  const weekInfo = getWeekDays(now, weekOffset, items);
-
   const visible = items
     .filter(
       (item) =>
-        // Deadline tab filter
         (filter === 'all' || status(item, now) === filter) &&
-        // Kind filter
         (kind === 'all' || item.kind === kind) &&
-        // Course filter
         (course === 'all' || String(item.courseId) === course) &&
-        // Day selection from week bar filter
-        (!selectedDayKey || (item.dueAt && dayKey(item.dueAt) === selectedDayKey)) &&
-        // Search query
         `${item.name} ${item.courseName}`.toLowerCase().includes(query.toLowerCase()),
     )
-    // Upcoming deadlines ascending, past deadlines descending, undated last
-    .sort((a, b) => {
-      if (filter === 'past') {
-        return (b.dueAt || 0) - (a.dueAt || 0);
-      }
-      return (a.dueAt || Infinity) - (b.dueAt || Infinity);
-    });
+    .sort((a, b) =>
+      filter === 'past'
+        ? (b.dueAt || 0) - (a.dueAt || 0)
+        : (a.dueAt || Infinity) - (b.dueAt || Infinity),
+    );
 
   return (
     <Container as="main" className="py-10 md:py-14">
-      {/* Unified page header */}
       <PageHeader
-        title="Course Activity Planner"
-        description="Plan your quizzes, assignments, and deadlines with the weekly schedule and activity table."
+        title="Courses"
+        description="View and browse all enrolled courses, assignments, and quizzes."
         action={
           <Button
             variant="secondary"
@@ -139,7 +118,6 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Consistent notification and guide message stack */}
       <div
         className={`${styles.noticeStack} flex flex-col gap-3`}
         aria-label="Notices and guides"
@@ -183,12 +161,11 @@ export default function DashboardPage() {
           <MessageBox
             variant="info"
             icon={Sparkles}
-            title="Keep your next deadline in sight."
+            title="Course activity overview"
             onDismiss={dismissSlogan}
             dismissLabel="Dismiss slogan"
           >
-            A shared overview of assignments and quizzes. Less tab-hopping, more breathing
-            room.
+            An organized overview of all enrolled course tasks, assignments, and quizzes.
           </MessageBox>
         )}
 
@@ -196,35 +173,18 @@ export default function DashboardPage() {
           <MessageBox
             variant="info"
             icon={Layers3}
-            title="A planner, not a gradebook."
+            title="Course verification reminder"
             onDismiss={dismissGuide}
             dismissLabel="Dismiss guide"
           >
-            "Past due" means the deadline has passed. It does not reflect personal
-            submission status. Always verify quiz submissions and assignment uploads on
-            SCeLE.
+            Always check quiz submissions and assignment uploads directly on SCeLE.
           </MessageBox>
         )}
       </div>
 
-      {/* Top weekly schedule bar */}
-      <section className="my-8" aria-label="Weekly planner">
-        <WeekBar
-          days={weekInfo.days}
-          weekLabel={weekInfo.weekLabel}
-          weekOffset={weekOffset}
-          selectedDayKey={selectedDayKey}
-          onSelectDay={(key) => setSelectedDayKey(key)}
-          onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
-          onNextWeek={() => setWeekOffset((prev) => prev + 1)}
-          onCurrentWeek={() => setWeekOffset(0)}
-        />
-      </section>
-
-      {/* Quick stats grid */}
       <section
-        className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5"
-        aria-label="Activity summary"
+        className="my-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5"
+        aria-label="Course activity summary"
       >
         {[
           { icon: Clock3, title: 'Upcoming', count: counts.upcoming, tab: 'upcoming' },
@@ -236,42 +196,28 @@ export default function DashboardPage() {
             count: counts.undated,
             tab: 'undated',
           },
-        ].map(({ icon: Icon, title, count, tab }) => {
-          return (
-            <button
-              key={title}
-              className="rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-teal-400 shadow-xs"
-              onClick={() => {
-                setFilter(tab);
-                setSelectedDayKey(null);
-              }}
-            >
-              <span className="flex items-center justify-between text-sm text-slate-500">
-                {title}
-                <Icon size={18} />
-              </span>
-              <span className="mt-4 block text-3xl font-semibold tracking-tight">
-                {busy && !data ? '—' : count}
-              </span>
-            </button>
-          );
-        })}
+        ].map(({ icon: Icon, title, count, tab }) => (
+          <button
+            key={title}
+            className="rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-teal-400"
+            onClick={() => setFilter(tab)}
+          >
+            <span className="flex items-center justify-between text-sm text-slate-500">
+              {title}
+              <Icon size={18} />
+            </span>
+            <span className="mt-4 block text-3xl font-semibold tracking-tight">
+              {busy && !data ? '—' : count}
+            </span>
+          </button>
+        ))}
       </section>
 
-      {/* Main activities section with table layout */}
       <section className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle>Deadlines &amp; Tasks</SectionTitle>
-          <div className="flex items-center gap-2">
-            {selectedDayKey && (
-              <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
-                Day: {selectedDayKey}
-              </span>
-            )}
-            <span className="text-xs text-slate-500">{visible.length} activities</span>
-          </div>
+          <SectionTitle>All Course Activities</SectionTitle>
+          <span className="text-xs text-slate-500">{visible.length} activities</span>
         </div>
-
         <div className={styles.filterTabs} aria-label="Deadline filter">
           {[
             ['upcoming', 'Upcoming'],
@@ -283,16 +229,12 @@ export default function DashboardPage() {
               key={value}
               aria-pressed={filter === value}
               className={filter === value ? styles.filterSelected : ''}
-              onClick={() => {
-                setFilter(value);
-                setSelectedDayKey(null);
-              }}
+              onClick={() => setFilter(value)}
             >
               {label}
             </button>
           ))}
         </div>
-
         <div className={styles.searchRow}>
           <label className={styles.searchBox}>
             <Search size={17} />
@@ -309,8 +251,8 @@ export default function DashboardPage() {
             onChange={(event) => setKind(event.target.value)}
           >
             <option value="all">All types</option>
-            <option value="assignment">Assignments (Green)</option>
-            <option value="quiz">Quizzes (Blue)</option>
+            <option value="assignment">Assignments</option>
+            <option value="quiz">Quizzes</option>
           </select>
           <select
             aria-label="Course"
@@ -325,14 +267,13 @@ export default function DashboardPage() {
             ))}
           </select>
         </div>
-
-        <div aria-live="polite">
+        <div className="flex flex-col gap-3" aria-live="polite">
           {busy && !data ? (
             <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
               Loading your activities…
             </div>
           ) : visible.length ? (
-            <TabularActivityList items={visible} now={now} />
+            visible.map((item) => <ActivityCard item={item} key={item.id} />)
           ) : (
             <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
               <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 p-4 text-teal-700">

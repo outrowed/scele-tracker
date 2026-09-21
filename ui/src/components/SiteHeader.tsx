@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, Layers3, LogOut, Menu, Shield, User, X } from 'lucide-react';
+import { BookOpen, Calendar, Layers3, LogOut, Menu, Shield, User, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Container } from './Container';
 import { Button } from './Button';
@@ -17,6 +17,7 @@ export function SiteHeader() {
   }, [location.pathname]);
 
   const isFeedActive = location.pathname === '/';
+  const isCoursesActive = location.pathname.startsWith('/courses');
   const isCalendarActive = location.pathname.startsWith('/calendar');
   const isAdminActive = location.pathname.startsWith('/admin');
 
@@ -66,6 +67,18 @@ export function SiteHeader() {
                   />
                   <span className="hidden md:inline">Activity Feed</span>
                   <span className="md:hidden">Feed</span>
+                </Link>
+
+                <Link
+                  to="/courses"
+                  aria-current={isCoursesActive ? 'page' : undefined}
+                  className={desktopNavLinkClass(isCoursesActive)}
+                >
+                  <BookOpen
+                    size={16}
+                    className={isCoursesActive ? 'text-teal-700' : 'text-slate-400'}
+                  />
+                  <span>Courses</span>
                 </Link>
 
                 <Link
@@ -160,6 +173,18 @@ export function SiteHeader() {
                 className={isFeedActive ? 'text-teal-700' : 'text-slate-400'}
               />
               Activity Feed
+            </Link>
+            <Link
+              to="/courses"
+              aria-current={isCoursesActive ? 'page' : undefined}
+              onClick={() => setIsOpen(false)}
+              className={mobileNavLinkClass(isCoursesActive)}
+            >
+              <BookOpen
+                size={18}
+                className={isCoursesActive ? 'text-teal-700' : 'text-slate-400'}
+              />
+              Courses
             </Link>
             <Link
               to="/calendar"
