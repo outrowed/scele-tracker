@@ -25,11 +25,24 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-slate-500, #64748b);
+  border-radius: 0.375rem 0.375rem 0 0;
+  transition:
+    color 0.15s,
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
-.filterSelected {
-  border-color: var(--color-teal-700, #0f766e);
+.filterTabs button:hover {
+  color: var(--color-slate-800, #1e293b);
+  background-color: var(--color-slate-50, #f8fafc);
+}
+
+.filterTabs button.filterSelected,
+.filterTabs button[aria-pressed='true'] {
+  border-bottom-color: var(--color-teal-700, #0f766e);
   color: var(--color-teal-800, #115e59);
+  font-weight: 600;
+  background-color: rgba(240, 253, 250, 0.7);
 }
 
 /* Search row and search box with responsive layout */
