@@ -68,36 +68,57 @@ export function WeekBar({
       <div className="overflow-x-auto rounded-xl border border-slate-200">
         <div className="min-w-[700px]">
           <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200">
-            {days.map((day) => (
-              <button
-                key={day.dateKey}
-                type="button"
-                aria-label={`Filter activities on ${day.dateKey}`}
-                aria-pressed={selectedDayKey === day.dateKey}
-                onClick={() =>
-                  onSelectDay(selectedDayKey === day.dateKey ? null : day.dateKey)
-                }
-                className={`relative flex items-center justify-between px-3 py-3 text-sm transition ${
-                  selectedDayKey === day.dateKey
-                    ? 'bg-teal-100 text-teal-900'
-                    : day.isToday
-                      ? 'bg-teal-50 text-teal-800'
-                      : 'bg-slate-50 text-slate-600 hover:bg-teal-50'
-                }`}
-              >
-                {/* Top accent bar for today */}
-                {day.isToday && (
+            {days.map((day) => {
+              const isSelected = selectedDayKey === day.dateKey;
+              return (
+                <button
+                  key={day.dateKey}
+                  type="button"
+                  aria-label={`Filter activities on ${day.dateKey}`}
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    onSelectDay(isSelected ? null : day.dateKey)
+                  }
+                  className={`relative flex items-center justify-between px-3 py-3 text-sm transition cursor-pointer text-left ${
+                    isSelected
+                      ? 'bg-teal-100/90 text-teal-900 font-medium'
+                      : day.isToday
+                        ? 'bg-teal-50/80 font-medium'
+                        : 'bg-slate-50/60 hover:bg-slate-100/60'
+                  }`}
+                >
+                  {/* Top accent bar ONLY appears when selecting a date */}
+                  {isSelected && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0 h-1 bg-teal-600"
+                    />
+                  )}
                   <span
-                    aria-hidden="true"
-                    className="absolute inset-x-0 top-0 h-1 bg-teal-600"
-                  />
-                )}
-                <span>{day.dayName}</span>
-                <span className="font-semibold">
-                  {day.dayNumber} {day.monthName}
-                </span>
-              </button>
-            ))}
+                    className={`font-semibold ${
+                      isSelected
+                        ? 'text-teal-950 font-bold'
+                        : day.isToday
+                          ? 'text-teal-900 font-bold'
+                          : 'text-slate-600'
+                    }`}
+                  >
+                    {day.dayName}
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      isSelected
+                        ? 'text-teal-950 font-bold'
+                        : day.isToday
+                          ? 'text-teal-800 font-bold'
+                          : 'text-slate-700'
+                    }`}
+                  >
+                    {day.dayNumber} {day.monthName}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           <div className="relative">
             <div
@@ -107,16 +128,16 @@ export function WeekBar({
               {days.map((day) => (
                 <div
                   key={day.dateKey}
-                  className={`flex items-center justify-center ${
+                  className={`flex items-center justify-center transition ${
                     selectedDayKey === day.dateKey
-                      ? 'bg-teal-100/40'
+                      ? 'bg-teal-100/30'
                       : day.isToday
                         ? 'bg-teal-50/40'
                         : ''
                   }`}
                 >
                   {day.isToday && (
-                    <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 uppercase">
+                    <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 uppercase select-none">
                       TODAY
                     </span>
                   )}

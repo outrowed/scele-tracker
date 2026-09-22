@@ -1,6 +1,6 @@
 import { DataStatusNotice } from '../components/DataStatusNotice';
 import { useEffect, useState } from 'react';
-import { ClipboardList, Layers3, RefreshCw, Search, Sparkles } from 'lucide-react';
+import { ClipboardList, Layers3, RefreshCw, Search, Sparkles, X } from 'lucide-react';
 import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
@@ -177,8 +177,16 @@ export default function DashboardPage() {
           <SectionTitle>Activities</SectionTitle>
           {selectedDayKey && (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
-                Day: {selectedDayKey}
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 pl-2.5 pr-1.5 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
+                <span>Day: {selectedDayKey}</span>
+                <button
+                  type="button"
+                  aria-label="Clear date filter"
+                  onClick={() => setSelectedDayKey(null)}
+                  className="rounded-sm p-0.5 text-teal-600 transition hover:bg-teal-100 hover:text-teal-900 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
               </span>
             </div>
           )}
