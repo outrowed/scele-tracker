@@ -7,7 +7,8 @@ import { weekRanges } from '../planner';
 import { Container } from '../components/Container';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { MessageBox } from '../components/MessageBox';
+import { DataStatusNotice } from '../components/DataStatusNotice';
+import styles from './DashboardPage.module.css';
 import { PageHeader, SectionDescription, SectionTitle } from '../components/Typography';
 
 export default function CalendarPage() {
@@ -69,17 +70,18 @@ export default function CalendarPage() {
         description="Track deadlines, view activity schedules, and plan coursework across the month."
       />
 
-      {error && (
-        <MessageBox role="alert" variant="error" className="mt-4">
-          {error}
-        </MessageBox>
-      )}
-      {(snapshot?.incomplete || snapshot?.stale || snapshot?.preparing) && (
-        <MessageBox variant="warning" className="mt-4">
-          Course data may be incomplete, stale, or still preparing. Check SCeLE to confirm
-          dates.
-        </MessageBox>
-      )}
+      <div
+        className={`${styles.noticeStack} flex flex-col gap-3`}
+        aria-label="Notices and guides"
+      >
+        <DataStatusNotice
+          error={error}
+          loading={
+            !snapshot ||
+            Boolean(snapshot.incomplete || snapshot.stale || snapshot.preparing)
+          }
+        />
+      </div>
 
       {/* Navigation and course filters */}
       <div className="my-6 flex flex-wrap items-center justify-between gap-3">

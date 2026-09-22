@@ -1,13 +1,6 @@
+import { DataStatusNotice } from '../components/DataStatusNotice';
 import { useEffect, useState } from 'react';
-import {
-  AlertCircle,
-  ClipboardList,
-  Layers3,
-  Loader2,
-  RefreshCw,
-  Search,
-  Sparkles,
-} from 'lucide-react';
+import { ClipboardList, Layers3, RefreshCw, Search, Sparkles } from 'lucide-react';
 import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
@@ -130,40 +123,10 @@ export default function DashboardPage() {
         className={`${styles.noticeStack} flex flex-col gap-3`}
         aria-label="Notices and guides"
       >
-        {error && (
-          <MessageBox
-            role="alert"
-            variant="error"
-            icon={AlertCircle}
-            title="Connection issue"
-          >
-            {error}
-          </MessageBox>
-        )}
-
-        {(data?.incomplete || data?.stale) && (
-          <MessageBox
-            role="alert"
-            variant="warning"
-            icon={AlertCircle}
-            title="Source synchronization warning"
-          >
-            Some course information is temporarily unavailable or stale. Please check
-            SCeLE directly for the latest updates.
-          </MessageBox>
-        )}
-
-        {data?.preparing && (
-          <MessageBox
-            variant="info"
-            icon={Loader2}
-            iconClassName="animate-spin"
-            title="Preparing course data"
-          >
-            Synchronizing latest course data from SCeLE. This view will update
-            automatically.
-          </MessageBox>
-        )}
+        <DataStatusNotice
+          error={error}
+          loading={!data || Boolean(data.incomplete || data.stale || data.preparing)}
+        />
 
         {!sloganDismissed && (
           <MessageBox

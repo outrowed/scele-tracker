@@ -1,6 +1,6 @@
+import { DataStatusNotice } from '../components/DataStatusNotice';
 import { useEffect, useState } from 'react';
 import {
-  AlertCircle,
   ArrowUpRight,
   BookOpen,
   CalendarDays,
@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Clock3,
   Layers3,
-  Loader2,
   RefreshCw,
   Search,
   Sparkles,
@@ -133,40 +132,10 @@ export default function CoursesPage() {
         className={`${styles.noticeStack} flex flex-col gap-3`}
         aria-label="Notices and guides"
       >
-        {error && (
-          <MessageBox
-            role="alert"
-            variant="error"
-            icon={AlertCircle}
-            title="Connection issue"
-          >
-            {error}
-          </MessageBox>
-        )}
-
-        {(data?.incomplete || data?.stale) && (
-          <MessageBox
-            role="alert"
-            variant="warning"
-            icon={AlertCircle}
-            title="Source synchronization warning"
-          >
-            Some course information is temporarily unavailable or stale. Please check
-            SCeLE directly for the latest updates.
-          </MessageBox>
-        )}
-
-        {data?.preparing && (
-          <MessageBox
-            variant="info"
-            icon={Loader2}
-            iconClassName="animate-spin"
-            title="Preparing course data"
-          >
-            Synchronizing latest course data from SCeLE. This view will update
-            automatically.
-          </MessageBox>
-        )}
+        <DataStatusNotice
+          error={error}
+          loading={!data || Boolean(data.incomplete || data.stale || data.preparing)}
+        />
 
         {!sloganDismissed && (
           <MessageBox
