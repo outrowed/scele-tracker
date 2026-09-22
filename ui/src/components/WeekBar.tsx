@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Activity } from '../model';
 import { weekRanges, type PlannerDay } from '../planner';
 import { dateLabel } from '../model';
@@ -36,7 +36,7 @@ export function WeekBar({
     ).values(),
   ];
   const ranges = weekRanges(items, days);
-  const lanes = Math.max(3, ...ranges.map((range) => range.lane + 1));
+  const lanes = Math.max(4, ...ranges.map((range) => range.lane + 1));
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:p-5">
       {/* Header controls for week navigation */}
@@ -49,33 +49,15 @@ export function WeekBar({
             {weekLabel}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {dayOffset !== 0 && (
-            <button
-              type="button"
-              onClick={onToday}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700"
-            >
-              Today
-            </button>
-          )}
+        {dayOffset !== 0 && (
           <button
             type="button"
-            onClick={onPrevDay}
-            aria-label="Previous day"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-teal-400 hover:text-teal-700"
+            onClick={onToday}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700"
           >
-            <ChevronLeft size={16} />
+            Today
           </button>
-          <button
-            type="button"
-            onClick={onNextDay}
-            aria-label="Next day"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-teal-400 hover:text-teal-700"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
+        )}
       </div>
 
       <p className="mb-3 text-xs text-slate-500">
@@ -226,6 +208,26 @@ export function WeekBar({
                 </p>
               )}
             </div>
+
+            {/* Circular navigation buttons inside the weekly dates grid */}
+            <button
+              type="button"
+              onClick={onPrevDay}
+              aria-label="Previous day"
+              title="Previous day"
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white/80 text-slate-700 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={onNextDay}
+              aria-label="Next day"
+              title="Next day"
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white/80 text-slate-700 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
+            >
+              <ArrowRight size={18} />
+            </button>
           </div>
         </div>
       </div>
