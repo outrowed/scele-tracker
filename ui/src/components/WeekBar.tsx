@@ -148,18 +148,48 @@ export function WeekBar({
               {ranges.map(
                 ({ item, start, end, lane, continuesBefore, continuesAfter }) => {
                   const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(item.dueAt)}`;
-                  const className = `mx-1 flex min-w-0 items-center gap-1 rounded-md border px-2 text-left text-xs font-medium ${item.kind === 'quiz' ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200' : 'border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'}`;
+                  const isQuiz = item.kind === 'quiz';
+                  const roundLeft = !continuesBefore;
+                  const roundRight = !continuesAfter;
+                  const rounding =
+                    roundLeft && roundRight
+                      ? 'rounded-md'
+                      : roundLeft
+                        ? 'rounded-l-md rounded-r-none'
+                        : roundRight
+                          ? 'rounded-r-md rounded-l-none'
+                          : 'rounded-none';
+                  const className = `flex min-w-0 items-center gap-1.5 border-y px-2 text-left text-xs font-medium transition cursor-pointer ${rounding} ${
+                    roundLeft ? 'ml-1 border-l' : 'border-l-0'
+                  } ${roundRight ? 'mr-1 border-r' : 'border-r-0'} ${
+                    isQuiz
+                      ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200'
+                      : 'border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                  }`;
                   const style = {
                     gridColumn: `${start + 1} / ${end + 2}`,
                     gridRow: lane + 1,
                   };
                   const content = (
                     <>
-                      {continuesBefore && <span aria-hidden="true">←</span>}
+                      {continuesBefore && (
+                        <span
+                          aria-hidden="true"
+                          className="shrink-0 text-[10px] opacity-60"
+                        >
+                          ◂
+                        </span>
+                      )}
                       <span className="truncate">{item.name}</span>
+                      <span className="hidden xl:inline text-[10px] opacity-75 truncate">
+                        · {item.courseName}
+                      </span>
                       {continuesAfter && (
-                        <span className="ml-auto" aria-hidden="true">
-                          →
+                        <span
+                          aria-hidden="true"
+                          className="ml-auto shrink-0 text-[10px] opacity-60"
+                        >
+                          ▸
                         </span>
                       )}
                     </>

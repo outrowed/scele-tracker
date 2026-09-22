@@ -188,6 +188,7 @@ describe('TabularActivityList component', () => {
 
 describe('CoursesPage component', () => {
   it('renders course cards and responds to deadline filter buttons', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-21T00:00:00Z'));
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
