@@ -181,7 +181,7 @@ describe('TabularActivityList component', () => {
     expect(screen.getByText('Past Quiz 1')).toBeTruthy();
     expect(screen.getAllByText('Quiz').length).toBe(2);
     expect(screen.getByText('September 2026')).toBeTruthy();
-    expect(screen.getByText('1 active task · 1 past due task')).toBeTruthy();
+    expect(screen.getByText('1 active · 1 past due')).toBeTruthy();
     expect(screen.getByText('Past due')).toBeTruthy();
   });
 });

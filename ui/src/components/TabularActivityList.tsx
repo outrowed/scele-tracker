@@ -21,7 +21,7 @@ function SectionDivider({ label }: { label: string }) {
       aria-label={label}
     >
       <div className="h-px flex-1 bg-slate-200" />
-      <span className="rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-semibold text-slate-600 shadow-xs">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 select-none">
         {label}
       </span>
       <div className="h-px flex-1 bg-slate-200" />
@@ -169,10 +169,10 @@ function renderTable(tableItems: Activity[], now: number) {
 function formatTaskSummary(activeCount: number, pastCount: number) {
   const parts: string[] = [];
   if (activeCount > 0) {
-    parts.push(`${activeCount} ${activeCount === 1 ? 'active task' : 'active tasks'}`);
+    parts.push(`${activeCount} active`);
   }
   if (pastCount > 0) {
-    parts.push(`${pastCount} ${pastCount === 1 ? 'past due task' : 'past due tasks'}`);
+    parts.push(`${pastCount} past due`);
   }
   return parts.join(' · ');
 }

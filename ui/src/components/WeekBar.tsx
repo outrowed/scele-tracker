@@ -38,9 +38,9 @@ export function WeekBar({
   const ranges = weekRanges(items, days);
   const lanes = Math.max(4, ...ranges.map((range) => range.lane + 1));
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:p-5">
+    <div>
       {/* Header controls for week navigation */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-slate-800 md:text-lg">
             Weekly Schedule
@@ -65,7 +65,7 @@ export function WeekBar({
         outside this week. A single known date is shown on that day; cut-off dates do not
         extend the bar.
       </p>
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
         <div className="min-w-[700px]">
           <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200">
             {days.map((day) => {
@@ -254,7 +254,7 @@ export function WeekBar({
       </div>
 
       {/* Legend & Filter indicator */}
-      <div className="mt-3 flex flex-wrap items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
