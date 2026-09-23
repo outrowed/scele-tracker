@@ -1,11 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, dateLabel, type Activity } from '../model';
 import { dayKey, monthDays, shiftMonth } from '../calendar';
 import { activityRange, weekRanges } from '../planner';
 import { Container } from '../components/Container';
-import { Button } from '../components/Button';
 import { DataStatusNotice } from '../components/DataStatusNotice';
 import styles from './DashboardPage.module.css';
 import { PageHeader, SectionDescription } from '../components/Typography';
@@ -385,8 +384,9 @@ export default function CalendarPage() {
 
       {/* Navigation and course filters */}
       <div className="my-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
             aria-label="Previous month"
             onClick={() => {
               setMonth(shiftMonth(month, -1));
@@ -395,16 +395,18 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-xs transition-all hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer"
           >
-            <ChevronLeft size={16} />
-          </Button>
+            <ArrowLeft size={18} />
+          </button>
           <h2
-            className="text-lg sm:text-xl font-bold tracking-tight text-slate-900"
+            className="min-w-[10rem] text-center text-lg sm:text-xl font-bold tracking-tight text-slate-900"
             aria-live="polite"
           >
             {title}
           </h2>
-          <Button
+          <button
+            type="button"
             aria-label="Next month"
             onClick={() => {
               setMonth(shiftMonth(month, 1));
@@ -413,10 +415,12 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-xs transition-all hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer"
           >
-            <ChevronRight size={16} />
-          </Button>
-          <Button
+            <ArrowRight size={18} />
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setMonth(today.slice(0, 7));
               setSelectedDate(null);
@@ -424,9 +428,10 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700 cursor-pointer sm:ml-1"
           >
             Today
-          </Button>
+          </button>
         </div>
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <span>Course</span>
