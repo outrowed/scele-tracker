@@ -1,62 +1,148 @@
-import { ArrowRight, Check } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { LogIn, AlertCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
 import uiLogo from '../assets/ui-logo.svg';
-import { SectionKicker } from '../components/Typography';
-import { ButtonLink } from '../components/Button';
+import { Button } from '../components/Button';
 
 export default function SignInPage() {
-  // Read CAS error parameter directly from the browser window URL to display sign-in failures.
-  const failed = new URLSearchParams(window.location.search).has('error');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!username.trim() || !password) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Sign-in failed.');
+      window.location.href = '/';
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main
-      className="mx-auto grid w-full max-w-[1280px] items-center gap-12 px-5 py-16 md:px-10 lg:grid-cols-[1.15fr_1fr]"
+      className="mx-auto flex w-full max-w-[480px] flex-col items-center justify-center px-5 py-16"
       style={{ minHeight: '76vh' }}
     >
-      <section>
-        <SectionKicker>A LITTLE LESS DEADLINE CHAOS</SectionKicker>
-        <h1 className="mb-7 mt-5 text-5xl font-semibold leading-[1.1] tracking-[-0.045em] md:text-6xl">
-          Your courses.
-          <br />
-          One clear view<span className="text-teal-600">.</span>
-        </h1>
-        <p className="max-w-lg text-lg leading-8 text-slate-500">
-          Assignments and quizzes from SCeLE, brought together so you can focus on what's
-          next.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-600">
-          <span className="flex items-center gap-2">
-            <Check size={17} /> Courses in one place
-          </span>
-          <span className="flex items-center gap-2">
-            <Check size={17} /> Deadlines in your local time
-          </span>
-        </div>
-      </section>
-      <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/40 md:p-10">
-        {/* Centered UI Makara logo without background boxing */}
+      <div className="w-full rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/40 md:p-10">
         <div className="mb-6 flex justify-center">
           <img src={uiLogo} alt="Universitas Indonesia" className="h-20 w-auto" />
         </div>
-        <h2 className="text-2xl font-semibold">Welcome to SCELE Tracker</h2>
-        <p className="mt-3 leading-7 text-slate-500">
-          Sign in with your Universitas Indonesia account to view the shared course
-          tracker.
-        </p>
-        {failed && (
-          <p
+        <h1 className="text-center text-2xl font-semibold">Sign In</h1>
+        <div className="mt-2 text-center text-sm leading-6 text-slate-500">
+          <span>
+            Enter your Universitas Indonesia SSO credentials to access your courses and
+            deadlines.
+          </span>
+          <div className="relative inline-block ml-1 align-baseline group">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full text-slate-400 hover:text-teal-700 focus:text-teal-700 focus:outline-none transition p-0.5 align-middle"
+              aria-label="Why are SSO credentials needed?"
+            >
+              <Info size={15} />
+            </button>
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-72 -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900 px-3.5 py-2.5 text-left text-xs leading-relaxed text-slate-100 shadow-xl opacity-0 transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto">
+              Your credentials are used to retrieve your basic profile and courses from
+              SCELE to create your personalized activity feed, and are required for the
+              app to work.
+              <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-slate-200 bg-slate-900" />
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div
             role="alert"
-            className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+            className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
           >
-            Sign-in could not be completed. Please try again.
-          </p>
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+            <span>{error}</span>
+          </div>
         )}
-        {/* Navigates the top-level window to the backend CAS flow, establishing the login state cookie. */}
-        <ButtonLink href="/api/auth/login" className="mt-8 w-full">
-          Continue with UI SSO <ArrowRight size={18} />
-        </ButtonLink>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label
+              htmlFor="signin-username"
+              className="mb-1.5 block text-sm font-medium text-slate-700"
+            >
+              Username
+            </label>
+            <input
+              id="signin-username"
+              type="text"
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={loading}
+              placeholder="Username"
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none disabled:opacity-60"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="signin-password"
+              className="mb-1.5 block text-sm font-medium text-slate-700"
+            >
+              Password
+            </label>
+            <input
+              id="signin-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              placeholder="Password"
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none disabled:opacity-60"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-2 w-full"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Signing in…
+              </>
+            ) : (
+              <>
+                Sign In <LogIn size={18} />
+              </>
+            )}
+          </Button>
+        </form>
+
         <p className="mt-5 text-center text-xs leading-6 text-slate-500">
-          Your UI password is entered only on the university SSO page.
+          Your password is sent securely and never stored.
         </p>
-      </section>
+
+        <div className="mt-6 border-t border-slate-100 pt-4 text-center">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-teal-700"
+          >
+            <ArrowLeft size={14} /> Back to homepage
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }

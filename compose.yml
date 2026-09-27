@@ -6,7 +6,7 @@ services:
     container_name: scele-course-tracker
     user: "1002:1002"
     labels:
-      taruna-kuma.app.docker.name: "SCeLE Course Tracker"
+      taruna-kuma.app.docker.name: "SCELE Course Tracker"
       taruna-kuma.app.docker.docker_container: "scele-course-tracker"
       taruna-kuma.app.docker.docker_host_name: "fhai"
       taruna-kuma.app.docker.interval: "60"

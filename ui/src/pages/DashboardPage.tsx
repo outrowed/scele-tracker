@@ -151,7 +151,7 @@ export default function DashboardPage() {
           >
             "Past due" means the deadline has passed. It does not reflect personal
             submission status. Always verify quiz submissions and assignment uploads on
-            SCeLE.
+            SCELE.
           </MessageBox>
         )}
       </div>

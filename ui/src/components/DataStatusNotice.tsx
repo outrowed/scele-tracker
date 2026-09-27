@@ -29,7 +29,7 @@ export function DataStatusNotice({
       title="Loading course data"
     >
       The system is preparing your course data and loading the latest activities from
-      SCeLE. Some activities may take a moment to appear.
+      SCELE. Some activities may take a moment to appear.
     </MessageBox>
   );
 }

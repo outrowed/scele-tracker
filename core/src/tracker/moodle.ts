@@ -154,6 +154,40 @@ export function mergeCalendar(
   }
 }
 const sessions = new Map<string, { session: MoodleSession; credentials: string }>();
+
+// Per-user Moodle sessions: keyed by SSO username, isolated cookie jars, no stored passwords.
+// Sessions are established at login time and expire with the tracker JWT (8h).
+const userSessions = new Map<string, { session: MoodleSession; expiresAt: number }>();
+
+/**
+ * Authenticate a user against SCELE/Moodle directly and return the session.
+ * The password is used transiently for this call and never stored.
+ */
+export async function loginMoodleUser(
+  username: string,
+  password: string,
+): Promise<MoodleSession> {
+  const session = new MoodleSession();
+  await session.login({ id: `user-${username}`, mode: 'session', username, password });
+  return session;
+}
+
+export function setUserMoodleSession(username: string, session: MoodleSession) {
+  userSessions.set(username, { session, expiresAt: Date.now() + 8 * 60 * 60_000 });
+}
+
+export function getUserMoodleSession(username: string): MoodleSession | null {
+  const entry = userSessions.get(username);
+  if (!entry || Date.now() > entry.expiresAt) {
+    userSessions.delete(username);
+    return null;
+  }
+  return entry.session;
+}
+
+export function clearUserMoodleSession(username: string) {
+  userSessions.delete(username);
+}
 export async function syncSession(account: Account): Promise<SyncResult> {
   const credentials = JSON.stringify([account.username, account.password]);
   let cached = sessions.get(account.id);
@@ -260,6 +294,14 @@ export class TokenClient {
 }
 export function retainSessions(ids: string[]) {
   for (const id of sessions.keys()) if (!ids.includes(id)) sessions.delete(id);
+}
+
+// Periodic cleanup: remove expired user sessions (called alongside retainSessions)
+export function pruneUserSessions() {
+  const now = Date.now();
+  for (const [key, entry] of userSessions) {
+    if (now > entry.expiresAt) userSessions.delete(key);
+  }
 }
 type Assignment = {
   id: number;

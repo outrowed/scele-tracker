@@ -157,7 +157,7 @@ export default function CoursesPage() {
             onDismiss={dismissGuide}
             dismissLabel="Dismiss guide"
           >
-            Always check quiz submissions and assignment uploads directly on SCeLE.
+            Always check quiz submissions and assignment uploads directly on SCELE.
           </MessageBox>
         )}
       </div>

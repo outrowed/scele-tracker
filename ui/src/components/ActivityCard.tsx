@@ -32,7 +32,7 @@ export function ActivityCard({ item }: { item: Activity }) {
           </Link>
         </h3>
         <p className="mt-2 line-clamp-2 text-sm text-slate-500">
-          {item.description || 'Open activity details for dates and the SCeLE link.'}
+          {item.description || 'Open activity details for dates and the SCELE link.'}
         </p>
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
           <span className="inline-flex items-center gap-1.5">

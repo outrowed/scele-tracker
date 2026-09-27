@@ -57,7 +57,7 @@ export default function ActivityDetailsPage() {
               </SectionKicker>
             }
             title={item.name}
-            description="Check SCeLE to confirm the dates that apply to your class."
+            description="Check SCELE to confirm the dates that apply to your class."
           />
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -65,7 +65,7 @@ export default function ActivityDetailsPage() {
               <SectionTitle className="mb-5 text-xl">Activity details</SectionTitle>
               <div className="whitespace-pre-wrap break-words leading-8 text-slate-600">
                 {item.description ||
-                  'No description is available. View the activity in SCeLE for full instructions.'}
+                  'No description is available. View the activity in SCELE for full instructions.'}
               </div>
             </Card>
             <Card as="aside">
@@ -88,17 +88,17 @@ export default function ActivityDetailsPage() {
                   </div>
                 ))}
               </dl>
-              {/* Leave this app in a separate tab using the visitor's own SCeLE session. */}
+              {/* Leave this app in a separate tab using the visitor's own SCELE session. */}
               <ButtonLink
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-7 w-full"
               >
-                Open in SCeLE <ArrowUpRight size={17} />
+                Open in SCELE <ArrowUpRight size={17} />
               </ButtonLink>
               <p className="mt-4 text-xs leading-5 text-slate-500">
-                Opens using your own SCeLE session. You still need access to this course.
+                Opens using your own SCELE session. You still need access to this course.
                 No quiz is started by this tracker.
               </p>
             </Card>

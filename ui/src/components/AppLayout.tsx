@@ -1,8 +1,9 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SiteHeader } from './SiteHeader';
 import { SiteFooter } from './SiteFooter';
 import { Container } from './Container';
+import LandingPage from '../pages/LandingPage';
 import SignInPage from '../pages/SignInPage';
 import DashboardPage from '../pages/DashboardPage';
 import CoursesPage from '../pages/CoursesPage';
@@ -29,10 +30,15 @@ export function AppLayout() {
           Checking your session…
         </Container>
       ) : !user ? (
-        <SignInPage />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<SignInPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       ) : (
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route

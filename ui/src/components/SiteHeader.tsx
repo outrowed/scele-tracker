@@ -141,9 +141,14 @@ export function SiteHeader() {
             </div>
           </>
         ) : (
-          <span className="hidden text-xs text-slate-500 sm:block">
-            Built for a clearer semester
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/login"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+            >
+              Sign In
+            </Link>
+          </div>
         )}
       </Container>
 

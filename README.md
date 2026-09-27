@@ -1,6 +1,6 @@
 # SCELE Tracker
 
-A modern course activity tracker and calendar dashboard for students at the Faculty of Computer Science, Universitas Indonesia (Fasilkom UI). It aggregates assignments, quizzes, and deadlines from [SCeLE](https://scele.cs.ui.ac.id) into a single, real-time dashboard and monthly calendar view.
+A modern course activity tracker and calendar dashboard for students at the Faculty of Computer Science, Universitas Indonesia (Fasilkom UI). It aggregates assignments, quizzes, and deadlines from [SCELE](https://scele.cs.ui.ac.id) into a single, real-time dashboard and monthly calendar view.
 
 The service is only accessible by authenticated users from Universitas Indonesia Central Authentication Service (UI CAS2 SSO). In short, it's only ever designed for UI students who have UI SSO accounts.
 
@@ -49,7 +49,7 @@ The service is only accessible by authenticated users from Universitas Indonesia
    ```sh
    cp config/accounts.example.json config/accounts.json
    ```
-   Add your SCeLE credentials or token (see [Account Configuration](#account-configuration)).
+   Add your SCELE credentials or token (see [Account Configuration](#account-configuration)).
 
 5. **Start development servers:**
    ```sh

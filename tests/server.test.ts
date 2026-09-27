@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { createApp } from '../core/src/app';
 import { settings } from '../core/src/tracker/config';
 import { parseIdentity, sessionUser } from '../core/src/tracker/auth';
+import { parseIdentity as parseCasIdentity } from '../core/src/tracker/cas';
 import { parseAccounts } from '../core/src/tracker/accounts';
 import {
   mergeCalendar,
@@ -64,6 +65,56 @@ describe('authentication boundary', () => {
         .status,
     ).toBe(200);
   });
+});
+
+describe('form-based login', () => {
+  it('rejects missing credentials without contacting CAS', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const app = createApp();
+    expect(
+      (await request(app).post('/api/auth/login').set('Origin', settings.origin).send({}))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await request(app)
+          .post('/api/auth/login')
+          .set('Origin', settings.origin)
+          .send({ username: '', password: 'pass' })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(app)
+          .post('/api/auth/login')
+          .set('Origin', settings.origin)
+          .send({ username: 'user', password: '' })
+      ).status,
+    ).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('requires same-origin for form login', async () => {
+    expect(
+      (
+        await request(createApp())
+          .post('/api/auth/login')
+          .set('Origin', 'https://evil.example')
+          .send({ username: 'u', password: 'p' })
+      ).status,
+    ).toBe(403);
+  });
+  it('never echoes passwords in error responses', async () => {
+    const secret = 'hunter2-secret-password';
+    const fetch = vi.fn().mockRejectedValue(new Error('network'));
+    vi.stubGlobal('fetch', fetch);
+    const response = await request(createApp())
+      .post('/api/auth/login')
+      .set('Origin', settings.origin)
+      .send({ username: 'student', password: secret });
+    expect(response.status).toBe(401);
+    expect(JSON.stringify(response.body)).not.toContain(secret);
+  });
   it('parses CAS namespaces and rejects failures or entities', () => {
     expect(
       parseIdentity(
@@ -76,6 +127,11 @@ describe('authentication boundary', () => {
       ),
     ).toThrow();
     expect(() => parseIdentity('<!DOCTYPE foo><serviceResponse/>')).toThrow();
+  });
+  it('cas.ts parseIdentity matches auth.ts parseIdentity', () => {
+    const xml =
+      '<cas:serviceResponse><cas:authenticationSuccess><cas:user>student</cas:user><cas:attributes><cas:nama>Student</cas:nama></cas:attributes></cas:authenticationSuccess></cas:serviceResponse>';
+    expect(parseCasIdentity(xml)).toEqual(parseIdentity(xml));
   });
 });
 describe('accounts and metadata', () => {
