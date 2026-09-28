@@ -1,6 +1,7 @@
-import { ArrowUpRight, Calendar, CheckCircle2, Clock3 } from 'lucide-react';
+import { ActivityStatus } from './ActivityStatus';
+import { ArrowUpRight, Calendar, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { dateLabel, remaining, status, type Activity } from '../model';
+import { dateLabel, scheduleAt, status, type Activity } from '../model';
 import {
   compareNewestFirst,
   deadlineTimeState,
@@ -61,35 +62,6 @@ function renderTable(tableItems: Activity[], now: number) {
               const timeState = deadlineTimeState(item, now);
               const isQuiz = item.kind === 'quiz';
 
-              // Status styles
-              let statusBadge = (
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                  Undated
-                </span>
-              );
-
-              if (timeState === 'today') {
-                statusBadge = (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 animate-pulse">
-                    <Clock3 size={13} />
-                    Due Today
-                  </span>
-                );
-              } else if (timeState === 'past') {
-                statusBadge = (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 border border-rose-200/60">
-                    {remaining(item.dueAt, now)}
-                  </span>
-                );
-              } else if (timeState === 'upcoming') {
-                statusBadge = (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 border border-teal-200/60">
-                    <CheckCircle2 size={13} />
-                    {remaining(item.dueAt, now)}
-                  </span>
-                );
-              }
-
               // Row background highlight for today
               const rowBg =
                 timeState === 'today'
@@ -148,13 +120,13 @@ function renderTable(tableItems: Activity[], now: number) {
                   <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 font-medium min-w-[140px]">
                     <span className="inline-flex items-center gap-1.5">
                       <Clock3 size={13} className="shrink-0 text-slate-400" />
-                      <span>{dateLabel(item.dueAt)}</span>
+                      <span>{dateLabel(scheduleAt(item))}</span>
                     </span>
                   </td>
 
                   {/* Column 5: Status */}
                   <td className="whitespace-nowrap py-3.5 pl-3.5 pr-4 text-right sm:pr-6">
-                    {statusBadge}
+                    <ActivityStatus item={item} now={now} />
                   </td>
                 </tr>
               );
@@ -166,13 +138,13 @@ function renderTable(tableItems: Activity[], now: number) {
   );
 }
 
-function formatTaskSummary(activeCount: number, pastCount: number) {
+function formatTaskSummary(activeCount: number, passedCount: number) {
   const parts: string[] = [];
   if (activeCount > 0) {
     parts.push(`${activeCount} active`);
   }
-  if (pastCount > 0) {
-    parts.push(`${pastCount} past due`);
+  if (passedCount > 0) {
+    parts.push(`${passedCount} deadlines passed`);
   }
   return parts.join(' · ');
 }
@@ -181,14 +153,14 @@ export function TabularActivityList({
   items,
   now = Date.now() / 1000,
 }: TabularActivityListProps) {
-  const datedItems = items.filter((item) => item.dueAt != null);
-  const undatedItems = items.filter((item) => item.dueAt == null);
+  const datedItems = items.filter((item) => scheduleAt(item) != null);
+  const undatedItems = items.filter((item) => scheduleAt(item) == null);
 
   // Group dated activities by month (YYYY-MM), separating active and past due
   const monthGroups = datedItems.reduce<
     Record<string, { active: Activity[]; past: Activity[] }>
   >((acc, item) => {
-    const mKey = monthKey(item.dueAt!);
+    const mKey = monthKey(scheduleAt(item)!);
     if (!acc[mKey]) {
       acc[mKey] = { active: [], past: [] };
     }
@@ -207,7 +179,7 @@ export function TabularActivityList({
     monthGroups[mKey].past.sort(compareNewestFirst);
   }
 
-  // Track whether the "Past due" section divider has been rendered
+  // Separate elapsed deadlines without implying that completed work was missed.
   let pastDueDividerRendered = false;
 
   return (
@@ -235,7 +207,7 @@ export function TabularActivityList({
 
         return (
           <div key={mKey} className="flex flex-col gap-4">
-            {showDividerBeforeMonth && <SectionDivider label="Past due" />}
+            {showDividerBeforeMonth && <SectionDivider label="Deadlines passed" />}
 
             {/* Single Month Header */}
             <div className="flex items-center gap-3">
@@ -256,10 +228,10 @@ export function TabularActivityList({
             {/* 1. Active tasks for this month */}
             {active.length > 0 && renderTable(active, now)}
 
-            {/* Divider between active and past due tasks within this same month */}
-            {showDividerInsideMonth && <SectionDivider label="Past due" />}
+            {/* Divider between active and elapsed deadlines within this same month */}
+            {showDividerInsideMonth && <SectionDivider label="Deadlines passed" />}
 
-            {/* 2. Past due tasks for this month */}
+            {/* 2. Activities whose deadlines have passed this month */}
             {past.length > 0 && renderTable(past, now)}
           </div>
         );

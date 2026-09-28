@@ -5,6 +5,9 @@ dist/
 .env.*
 !env.example
 
+# Private SCELE endpoint experiments (credentials and response fixtures).
+/experiment/
+
 coverage/
 test-results/
 *.bak.*

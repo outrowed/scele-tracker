@@ -9,6 +9,8 @@ import {
   setUserMoodleSession,
   loginMoodleUser,
   clearUserMoodleSession,
+  getUserMoodleSession,
+  MoodleSessionExpired,
 } from './moodle.js';
 
 const cookie = 'scele_session';
@@ -73,7 +75,30 @@ export const auth = Router();
 
 auth.get('/me', async (req, res) => {
   const user = sessionUser(req.cookies[cookie]);
-  res.json({ user: user ? { ...user, role: await roleFor(user.username) } : null });
+  if (!user) {
+    res.json({ user: null });
+    return;
+  }
+  const moodle = getUserMoodleSession(user.username);
+  if (!moodle) {
+    res.clearCookie(cookie, options);
+    res.json({ user: null });
+    return;
+  }
+  try {
+    await moodle.checkValid();
+    res.json({ user: { ...user, role: await roleFor(user.username) } });
+  } catch (error) {
+    if (error instanceof MoodleSessionExpired) {
+      clearUserMoodleSession(user.username);
+      res.clearCookie(cookie, options);
+      res.json({ user: null });
+      return;
+    }
+    res
+      .status(503)
+      .json({ error: 'Cannot verify your SCELE session right now. Please try again.' });
+  }
 });
 
 // Single-form login proxy: authenticates with both UI SSO CAS and SCELE/Moodle

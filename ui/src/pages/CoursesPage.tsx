@@ -1,40 +1,37 @@
+import {
+  ActivityFilters,
+  emptyFilters,
+  matchesFilters,
+} from '../components/ActivityFilters';
 import { DataStatusNotice } from '../components/DataStatusNotice';
 import { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
   CalendarDays,
-  CheckCircle2,
   ClipboardList,
   Clock3,
-  Layers3,
   RefreshCw,
   Search,
-  Sparkles,
   Timer,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { MessageBox } from '../components/MessageBox';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
 import { PageHeader } from '../components/Typography';
-import { useDismissible } from '../hooks/useDismissible';
-import { api, dateLabel, remaining, status, type Snapshot } from '../model';
+import { api, dateLabel, scheduleAt, status, type Snapshot } from '../model';
 import { deadlineTimeState } from '../planner';
+import { ActivityStatus } from '../components/ActivityStatus';
 import styles from './DashboardPage.module.css';
 
 export default function CoursesPage() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState('upcoming');
-  const [kind, setKind] = useState('all');
+  const [filters, setFilters] = useState(emptyFilters);
   const [query, setQuery] = useState('');
-  const [course, setCourse] = useState('all');
-  const [now, setNow] = useState(Date.now() / 1000);
 
-  const [sloganDismissed, dismissSlogan] = useDismissible('courses_slogan');
-  const [guideDismissed, dismissGuide] = useDismissible('courses_guide');
+  const [now, setNow] = useState(Date.now() / 1000);
 
   async function refresh() {
     setBusy(true);
@@ -51,12 +48,14 @@ export default function CoursesPage() {
   useEffect(() => {
     let active = true;
     let inFlight = false;
+    let preparing = true;
     async function poll() {
       if (document.visibilityState !== 'visible' || inFlight) return;
       inFlight = true;
       try {
         const snapshot = await api<Snapshot>('/api/activities');
         if (active) {
+          preparing = Boolean(snapshot.preparing);
           setData(snapshot);
           setError('');
           setNow(Date.now() / 1000);
@@ -68,7 +67,9 @@ export default function CoursesPage() {
       }
     }
     void poll();
-    const timer = setInterval(poll, 60_000);
+    const timer = setInterval(() => {
+      if (preparing) void poll();
+    }, 5_000);
     document.addEventListener('visibilitychange', poll);
     return () => {
       active = false;
@@ -91,16 +92,10 @@ export default function CoursesPage() {
   const visible = items
     .filter(
       (item) =>
-        (filter === 'all' || status(item, now) === filter) &&
-        (kind === 'all' || item.kind === kind) &&
-        (course === 'all' || String(item.courseId) === course) &&
+        matchesFilters(item, filters, now) &&
         `${item.name} ${item.courseName}`.toLowerCase().includes(query.toLowerCase()),
     )
-    .sort((a, b) =>
-      filter === 'past'
-        ? (b.dueAt || 0) - (a.dueAt || 0)
-        : (a.dueAt || Infinity) - (b.dueAt || Infinity),
-    );
+    .sort((a, b) => (scheduleAt(a) ?? Infinity) - (scheduleAt(b) ?? Infinity));
 
   const groupedCourses = courses
     .map(([courseId, courseName]) => ({
@@ -130,36 +125,12 @@ export default function CoursesPage() {
 
       <div
         className={`${styles.noticeStack} flex flex-col gap-3`}
-        aria-label="Notices and guides"
+        aria-label="Data status"
       >
         <DataStatusNotice
           error={error}
           loading={!data || Boolean(data.incomplete || data.stale || data.preparing)}
         />
-
-        {!sloganDismissed && (
-          <MessageBox
-            variant="info"
-            icon={Sparkles}
-            title="Course activity overview"
-            onDismiss={dismissSlogan}
-            dismissLabel="Dismiss slogan"
-          >
-            An organized overview of all enrolled course tasks, assignments, and quizzes.
-          </MessageBox>
-        )}
-
-        {!guideDismissed && (
-          <MessageBox
-            variant="info"
-            icon={Layers3}
-            title="Course verification reminder"
-            onDismiss={dismissGuide}
-            dismissLabel="Dismiss guide"
-          >
-            Always check quiz submissions and assignment uploads directly on SCELE.
-          </MessageBox>
-        )}
       </div>
 
       {/* Activity summary on top */}
@@ -169,7 +140,7 @@ export default function CoursesPage() {
       >
         {[
           { icon: Clock3, title: 'Upcoming', count: counts.upcoming, tab: 'upcoming' },
-          { icon: Timer, title: 'Past due', count: counts.past, tab: 'past' },
+          { icon: Timer, title: 'Deadlines passed', count: counts.past, tab: 'past' },
           { icon: BookOpen, title: 'Courses', count: courses.length, tab: 'all' },
           {
             icon: CalendarDays,
@@ -178,7 +149,7 @@ export default function CoursesPage() {
             tab: 'undated',
           },
         ].map(({ icon: Icon, title, count, tab }) => {
-          const isSelected = filter === tab;
+          const isSelected = tab !== 'all' && filters.deadline.includes(tab);
           return (
             <button
               key={title}
@@ -187,7 +158,18 @@ export default function CoursesPage() {
                   ? 'border-teal-500 bg-teal-50/40 ring-2 ring-teal-600/20 shadow-2xs'
                   : 'border-slate-200 bg-white hover:border-teal-400'
               }`}
-              onClick={() => setFilter(tab)}
+              aria-pressed={isSelected}
+              onClick={() =>
+                setFilters({
+                  ...filters,
+                  deadline:
+                    tab === 'all'
+                      ? []
+                      : isSelected
+                        ? filters.deadline.filter((value) => value !== tab)
+                        : [...filters.deadline, tab],
+                })
+              }
             >
               <span className="flex items-center justify-between text-sm text-slate-500">
                 <span>{title}</span>
@@ -218,28 +200,9 @@ export default function CoursesPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <select
-            aria-label="Activity type"
-            value={kind}
-            onChange={(event) => setKind(event.target.value)}
-          >
-            <option value="all">All types</option>
-            <option value="assignment">Assignments</option>
-            <option value="quiz">Quizzes</option>
-          </select>
-          <select
-            aria-label="Course"
-            value={course}
-            onChange={(event) => setCourse(event.target.value)}
-          >
-            <option value="all">All courses</option>
-            {courses.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
         </div>
+
+        <ActivityFilters items={items} value={filters} onChange={setFilters} />
 
         {/* Activities grouped by course */}
         <div className="flex flex-col gap-6" aria-live="polite">
@@ -322,34 +285,6 @@ export default function CoursesPage() {
                           const timeState = deadlineTimeState(item, now);
                           const isQuiz = item.kind === 'quiz';
 
-                          let statusBadge = (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                              Undated
-                            </span>
-                          );
-
-                          if (timeState === 'today') {
-                            statusBadge = (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 animate-pulse border border-amber-200">
-                                <Clock3 size={13} />
-                                Due Today
-                              </span>
-                            );
-                          } else if (timeState === 'past') {
-                            statusBadge = (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 border border-rose-200/60">
-                                {remaining(item.dueAt, now)}
-                              </span>
-                            );
-                          } else if (timeState === 'upcoming') {
-                            statusBadge = (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 border border-teal-200/60">
-                                <CheckCircle2 size={13} />
-                                {remaining(item.dueAt, now)}
-                              </span>
-                            );
-                          }
-
                           const rowBg =
                             timeState === 'today'
                               ? 'bg-amber-50/30 hover:bg-amber-50/60'
@@ -392,11 +327,11 @@ export default function CoursesPage() {
                               <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 font-medium min-w-[140px]">
                                 <span className="inline-flex items-center gap-1.5">
                                   <Clock3 size={13} className="shrink-0 text-slate-400" />
-                                  <span>{dateLabel(item.dueAt)}</span>
+                                  <span>{dateLabel(scheduleAt(item))}</span>
                                 </span>
                               </td>
                               <td className="whitespace-nowrap py-3.5 pl-3.5 pr-4 text-right sm:pr-6">
-                                {statusBadge}
+                                <ActivityStatus item={item} now={now} />
                               </td>
                             </tr>
                           );
@@ -413,12 +348,18 @@ export default function CoursesPage() {
                 <ClipboardList size={26} />
               </div>
               <h3 className="font-semibold text-slate-800">
-                {error ? 'Feed unavailable' : 'No activities in this view'}
+                {error
+                  ? 'Feed unavailable'
+                  : data?.preparing
+                    ? 'Still loading activities'
+                    : 'No activities in this view'}
               </h3>
               <p className="mt-2 text-sm">
                 {error
                   ? 'Try refreshing when the connection is available.'
-                  : 'Try another filter or check back later.'}
+                  : data?.preparing
+                    ? 'SCELE is still returning your course dates and activities.'
+                    : 'Try another filter or check back later.'}
               </p>
             </div>
           )}

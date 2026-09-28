@@ -10,16 +10,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // Discover the server session on mount and publish it to every auth-context consumer.
+  // Verify both the app cookie and Moodle session on mount and when a tab resumes.
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((response) => {
+    let active = true;
+    let inFlight = false;
+    async function check(force = false) {
+      if ((!force && document.visibilityState !== 'visible') || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch('/api/auth/me');
         if (!response.ok) throw new Error('Unable to check your session. Please reload.');
-        return response.json();
-      })
-      .then((data) => setUser(data.user))
-      .catch((error) => setError(error.message))
-      .finally(() => setLoading(false));
+        const data = await response.json();
+        if (active) {
+          setUser(data.user);
+          setError('');
+        }
+      } catch (error) {
+        if (active) setError((error as Error).message);
+      } finally {
+        inFlight = false;
+        if (active) setLoading(false);
+      }
+    }
+    void check(true);
+    const onVisible = () => {
+      void check();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+  // Activity requests can discover expiry before the next session check.
+  useEffect(() => {
+    function expired() {
+      setUser(null);
+      setError('Your SCELE session expired. Sign in again to reconnect.');
+    }
+    window.addEventListener('scele-session-expired', expired);
+    return () => window.removeEventListener('scele-session-expired', expired);
   }, []);
   // Clear the server cookie first; only a successful logout signs out all context consumers.
   async function logout() {

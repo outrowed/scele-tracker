@@ -1,13 +1,16 @@
+import {
+  ActivityFilters,
+  emptyFilters,
+  matchesFilters,
+} from '../components/ActivityFilters';
 import { DataStatusNotice } from '../components/DataStatusNotice';
 import { useEffect, useState } from 'react';
-import { ClipboardList, Layers3, RefreshCw, Search, Sparkles, X } from 'lucide-react';
-import { MessageBox } from '../components/MessageBox';
+import { ClipboardList, RefreshCw, Search, X } from 'lucide-react';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
 import { PageHeader, SectionTitle } from '../components/Typography';
 import { WeekBar } from '../components/WeekBar';
 import { TabularActivityList } from '../components/TabularActivityList';
-import { useDismissible } from '../hooks/useDismissible';
 import { api, type Snapshot } from '../model';
 import { activityRange, compareNewestFirst, getWeekDays } from '../planner';
 import styles from './DashboardPage.module.css';
@@ -16,19 +19,16 @@ export default function DashboardPage() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [kind, setKind] = useState('all');
+  const [filters, setFilters] = useState(emptyFilters);
   const [query, setQuery] = useState('');
-  const [course, setCourse] = useState('all');
+
   const [now, setNow] = useState(Date.now() / 1000);
 
   // Week planner state
   const [dayOffset, setDayOffset] = useState(0);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
-  const [sloganDismissed, dismissSlogan] = useDismissible('dashboard_slogan');
-  const [guideDismissed, dismissGuide] = useDismissible('dashboard_guide');
-
-  // Fetch the shared snapshot (which may trigger server sync) and update this page's feed.
+  // Fetch this user's Moodle snapshot and update this page's feed.
   async function refresh() {
     setBusy(true);
     setError('');
@@ -45,12 +45,14 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
     let inFlight = false;
+    let preparing = true;
     async function poll() {
       if (document.visibilityState !== 'visible' || inFlight) return;
       inFlight = true;
       try {
         const snapshot = await api<Snapshot>('/api/activities');
         if (active) {
+          preparing = Boolean(snapshot.preparing);
           setData(snapshot);
           setError('');
           setNow(Date.now() / 1000);
@@ -62,7 +64,9 @@ export default function DashboardPage() {
       }
     }
     void poll();
-    const timer = setInterval(poll, 60_000);
+    const timer = setInterval(() => {
+      if (preparing) void poll();
+    }, 5_000);
     document.addEventListener('visibilitychange', poll);
     return () => {
       active = false;
@@ -73,9 +77,6 @@ export default function DashboardPage() {
 
   const items = data?.activities || [];
   // Multiple activity variants share a course; list each course only once in the filter.
-  const courses = [
-    ...new Map(items.map((item) => [item.courseId, item.courseName])).entries(),
-  ];
 
   // Week days with quizzes and assignments grouped
   const weekInfo = getWeekDays(now, dayOffset, items);
@@ -83,10 +84,7 @@ export default function DashboardPage() {
   const visible = items
     .filter(
       (item) =>
-        // Kind filter
-        (kind === 'all' || item.kind === kind) &&
-        // Course filter
-        (course === 'all' || String(item.courseId) === course) &&
+        matchesFilters(item, filters, now) &&
         // Day selection from week bar filter
         (!selectedDayKey ||
           (() => {
@@ -118,42 +116,15 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Consistent notification and guide message stack */}
+      {/* Retain actionable loading and connection notices. */}
       <div
         className={`${styles.noticeStack} flex flex-col gap-3`}
-        aria-label="Notices and guides"
+        aria-label="Data status"
       >
         <DataStatusNotice
           error={error}
           loading={!data || Boolean(data.incomplete || data.stale || data.preparing)}
         />
-
-        {!sloganDismissed && (
-          <MessageBox
-            variant="info"
-            icon={Sparkles}
-            title="Keep your next deadline in sight."
-            onDismiss={dismissSlogan}
-            dismissLabel="Dismiss slogan"
-          >
-            A shared overview of assignments and quizzes. Less tab-hopping, more breathing
-            room.
-          </MessageBox>
-        )}
-
-        {!guideDismissed && (
-          <MessageBox
-            variant="info"
-            icon={Layers3}
-            title="A planner, not a gradebook."
-            onDismiss={dismissGuide}
-            dismissLabel="Dismiss guide"
-          >
-            "Past due" means the deadline has passed. It does not reflect personal
-            submission status. Always verify quiz submissions and assignment uploads on
-            SCELE.
-          </MessageBox>
-        )}
       </div>
 
       {/* Top weekly schedule bar */}
@@ -202,31 +173,12 @@ export default function DashboardPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <select
-            aria-label="Activity type"
-            value={kind}
-            onChange={(event) => setKind(event.target.value)}
-          >
-            <option value="all">All types</option>
-            <option value="assignment">Assignments (Green)</option>
-            <option value="quiz">Quizzes (Blue)</option>
-          </select>
-          <select
-            aria-label="Course"
-            value={course}
-            onChange={(event) => setCourse(event.target.value)}
-          >
-            <option value="all">All courses</option>
-            {courses.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
         </div>
 
+        <ActivityFilters items={items} value={filters} onChange={setFilters} />
+
         <div aria-live="polite">
-          {busy && !data ? (
+          {!data ? (
             <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
               Loading your activities…
             </div>
@@ -238,12 +190,18 @@ export default function DashboardPage() {
                 <ClipboardList size={26} />
               </div>
               <h3 className="font-semibold text-slate-800">
-                {error ? 'Feed unavailable' : 'No activities in this view'}
+                {error
+                  ? 'Feed unavailable'
+                  : data?.preparing
+                    ? 'Still loading activities'
+                    : 'No activities in this view'}
               </h3>
               <p className="mt-2 text-sm">
                 {error
                   ? 'Try refreshing when the connection is available.'
-                  : 'Try another filter or check back later.'}
+                  : data?.preparing
+                    ? 'SCELE is still returning your course dates and activities.'
+                    : 'Try another filter or check back later.'}
               </p>
             </div>
           )}

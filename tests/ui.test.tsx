@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ActivityCard } from '../ui/src/components/ActivityCard';
+import { TabularActivityList } from '../ui/src/components/TabularActivityList';
 import AdminPage from '../ui/src/pages/AdminPage';
 import DashboardPage from '../ui/src/pages/DashboardPage';
-import { status, remaining, type Activity } from '../ui/src/model';
+import { status, remaining, scheduleAt, type Activity } from '../ui/src/model';
 
 afterEach(() => {
   cleanup();
@@ -36,6 +37,28 @@ describe('activity feed', () => {
     expect(remaining(null)).toBe('No deadline available');
   });
 
+  it('groups a closed quiz by close date rather than under no date', () => {
+    const quiz: Activity = {
+      ...item,
+      dueAt: null,
+      closeAt: Date.parse('2026-09-22T10:00:00Z') / 1000,
+    };
+    expect(scheduleAt(quiz)).toBe(quiz.closeAt);
+    expect(status(quiz, Date.parse('2026-09-23T00:00:00Z') / 1000)).toBe('past');
+    render(
+      <MemoryRouter>
+        <TabularActivityList
+          items={[quiz]}
+          now={Date.parse('2026-09-23T00:00:00Z') / 1000}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('September 2026')).toBeTruthy();
+    expect(screen.queryByText('No Deadline / Undated')).toBeNull();
+    expect(screen.getByText(/22 Sep.* 2026, 10:00/)).toBeTruthy();
+    expect(scheduleAt({ ...quiz, kind: 'assignment' })).toBeNull();
+  });
+
   it('links cards to details and renders Moodle markup as text', () => {
     render(
       <MemoryRouter>
@@ -50,70 +73,36 @@ describe('activity feed', () => {
   });
 });
 
-describe('dashboard dismissible message boxes', () => {
-  it('allows dismissing the slogan banner and remembers dismissal', async () => {
-    localStorage.clear();
+describe('personal activity filters', () => {
+  it('combines multiple values in a column and removes pills', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ activities: [item], incomplete: false }),
+      json: async () => ({
+        activities: [
+          item,
+          { ...item, id: 'assignment-2', name: 'Assignment', kind: 'assignment' },
+        ],
+        incomplete: false,
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
-
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
-
-    expect(screen.getByText('Keep your next deadline in sight.')).toBeTruthy();
-    const dismissBanner = screen.getByRole('button', { name: /dismiss slogan/i });
     await act(async () => {
-      fireEvent.click(dismissBanner);
+      await Promise.resolve();
     });
-
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Quiz' }));
+    expect(screen.getByRole('button', { name: 'Remove Type: Quiz' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Assignment' }));
+    expect(screen.getByRole('button', { name: 'Remove Type: Assignment' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Type: Quiz' }));
+    expect(screen.queryByRole('button', { name: 'Remove Type: Quiz' })).toBeNull();
     expect(screen.queryByText('Keep your next deadline in sight.')).toBeNull();
-    expect(localStorage.getItem('scele_dismiss_dashboard_slogan')).toBe('true');
-
-    cleanup();
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText('Keep your next deadline in sight.')).toBeNull();
-  });
-
-  it('allows dismissing the planner guide notice and remembers dismissal', async () => {
-    localStorage.clear();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ activities: [item], incomplete: false }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText('A planner, not a gradebook.')).toBeTruthy();
-    const dismissGuide = screen.getByRole('button', { name: /dismiss guide/i });
-    await act(async () => {
-      fireEvent.click(dismissGuide);
-    });
-
-    expect(screen.queryByText('A planner, not a gradebook.')).toBeNull();
-    expect(localStorage.getItem('scele_dismiss_dashboard_guide')).toBe('true');
-
-    cleanup();
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>,
-    );
     expect(screen.queryByText('A planner, not a gradebook.')).toBeNull();
   });
 });
@@ -137,7 +126,7 @@ describe('admin controls', () => {
       </MemoryRouter>,
     );
 
-    const resetButton = screen.getByRole('button', { name: /reset local storage/i });
+    const resetButton = screen.getByRole('button', { name: /reset local preferences/i });
     await act(async () => {
       fireEvent.click(resetButton);
     });

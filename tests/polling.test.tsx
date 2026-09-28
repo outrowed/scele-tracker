@@ -19,7 +19,7 @@ it('polls visible dashboards only and cleans up after unmount', async () => {
   const fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: async () => ({ activities: [], incomplete: false }),
+    json: async () => ({ activities: [], incomplete: false, preparing: true }),
   });
   vi.stubGlobal('fetch', fetch);
   const view = render(
@@ -39,18 +39,18 @@ it('polls visible dashboards only and cleans up after unmount', async () => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(60_000);
   });
-  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenCalledTimes(13);
   visible = false;
   await act(async () => {
     document.dispatchEvent(new Event('visibilitychange'));
     await vi.advanceTimersByTimeAsync(120_000);
   });
-  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenCalledTimes(13);
   view.unmount();
   visible = true;
   await act(async () => {
     document.dispatchEvent(new Event('visibilitychange'));
     await vi.advanceTimersByTimeAsync(60_000);
   });
-  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenCalledTimes(13);
 });

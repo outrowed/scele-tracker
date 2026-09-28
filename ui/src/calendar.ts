@@ -1,4 +1,4 @@
-import type { Activity } from './model';
+import { scheduleAt, type Activity } from './model';
 
 // Calendar arithmetic uses local date-only values from timestamps.
 export function dayKey(timestamp: number) {
@@ -37,12 +37,13 @@ export function shiftMonth(month: string, delta: number) {
 }
 
 export function activityOnDay(item: Activity, day: string) {
-  if (item.opensAt && item.dueAt && item.opensAt > item.dueAt) return null;
+  const scheduled = scheduleAt(item);
+  if (item.opensAt && scheduled && item.opensAt > scheduled) return null;
   if (item.opensAt && item.cutoffAt && item.opensAt > item.cutoffAt) return null;
   const opens = item.opensAt == null ? null : dayKey(item.opensAt);
-  const due = item.dueAt == null ? null : dayKey(item.dueAt);
+  const due = scheduled == null ? null : dayKey(scheduled);
   const cutoff = item.cutoffAt == null ? null : dayKey(item.cutoffAt);
-  if (day === due) return 'Due';
+  if (day === due) return item.kind === 'quiz' && item.dueAt == null ? 'Closes' : 'Due';
   if (day === opens) return 'Opens';
   if (day === cutoff) return 'Cut-off';
   if (opens && due && opens < day && day < due) return 'Available';

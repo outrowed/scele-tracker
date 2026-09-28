@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { api, dateLabel, type Activity } from '../model';
 import { Container } from '../components/Container';
 import { Card } from '../components/Card';
+import { ActivityStatus } from '../components/ActivityStatus';
 import { ButtonLink } from '../components/Button';
 import {
   PageHeader,
@@ -71,10 +72,16 @@ export default function ActivityDetailsPage() {
             <Card as="aside">
               <SectionTitle className="mb-5">Key dates</SectionTitle>
               <dl className="space-y-5">
+                <div>
+                  <dt className="text-xs text-slate-500">Your progress</dt>
+                  <dd className="mt-1">
+                    <ActivityStatus item={item} />
+                  </dd>
+                </div>
                 {[
                   ['Opens', dateLabel(item.opensAt)],
-                  [item.kind === 'quiz' ? 'Closes' : 'Due', dateLabel(item.dueAt)],
-                  ['Cut-off', dateLabel(item.cutoffAt)],
+                  ['Due', dateLabel(item.dueAt)],
+                  ['Closes', dateLabel(item.closeAt ?? item.cutoffAt)],
                   [
                     'Time limit',
                     item.timeLimit

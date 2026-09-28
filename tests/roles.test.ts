@@ -53,14 +53,20 @@ it('rechecks file policy, denies forged claims, and hides sources in list and de
     cutoffAt: null,
     timeLimit: null,
   };
-  const app = createApp({
-    get: async () => ({
-      activities: [activity],
-      sources: [{ id: 'secret-source', state: 'ok', updatedAt: null }],
-      configured: true,
-      checkedAt: null,
+  const app = createApp(
+    {
+      get: async () => ({
+        activities: [activity],
+        sources: [{ id: 'secret-source', state: 'ok', updatedAt: null }],
+        configured: true,
+        checkedAt: null,
+      }),
+    } as never,
+    async (username) => ({
+      activities: username === 'bob' ? [activity] : [],
+      incomplete: false,
     }),
-  } as never);
+  );
   expect((await request(app).get('/api/admin/status')).status).toBe(401);
   expect(
     (
@@ -76,6 +82,20 @@ it('rechecks file policy, denies forged claims, and hides sources in list and de
         .set('Cookie', `scele_session=${token('alice')}`)
     ).status,
   ).toBe(200);
+  expect((await request(app).get('/api/admin/shared-activities')).status).toBe(401);
+  expect(
+    (
+      await request(app)
+        .get('/api/admin/shared-activities')
+        .set('Cookie', `scele_session=${token('bob')}`)
+    ).status,
+  ).toBe(403);
+  const shared = await request(app)
+    .get('/api/admin/shared-activities')
+    .set('Cookie', `scele_session=${token('alice')}`);
+  expect(shared.status).toBe(200);
+  expect(shared.body.activities).toHaveLength(1);
+  expect(shared.body.sources[0].id).toBe('secret-source');
   const list = await request(app)
     .get('/api/activities')
     .set('Cookie', `scele_session=${token('bob')}`);

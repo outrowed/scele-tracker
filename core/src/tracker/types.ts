@@ -1,4 +1,6 @@
 export type Activity = {
+  completion?: 'completed' | 'pending' | 'unknown';
+  submittedLate?: boolean;
   id: string;
   kind: 'assignment' | 'quiz';
   name: string;
@@ -9,6 +11,7 @@ export type Activity = {
   opensAt: number | null;
   dueAt: number | null;
   cutoffAt: number | null;
+  closeAt?: number | null;
   timeLimit: number | null;
   source: string;
 };

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, dateLabel, type Activity } from '../model';
+import { api, dateLabel, scheduleAt, type Activity, type Snapshot } from '../model';
 import { dayKey, monthDays, shiftMonth } from '../calendar';
 import { activityRange, weekRanges } from '../planner';
 import { Container } from '../components/Container';
@@ -50,22 +50,37 @@ export default function CalendarPage() {
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
 
+  // Keep the calendar visible while per-user dates are enriched; refresh only
+  // while this tab is visible, and never overlap requests or update after unmount.
   useEffect(() => {
     let active = true;
-    api<{
-      activities: Activity[];
-      incomplete?: boolean;
-      stale?: boolean;
-      preparing?: boolean;
-    }>('/api/activities')
-      .then((data) => {
-        if (active) setSnapshot(data);
-      })
-      .catch((err) => {
+    let inFlight = false;
+    let preparing = true;
+    async function poll() {
+      if (!active || document.visibilityState !== 'visible' || inFlight) return;
+      inFlight = true;
+      try {
+        const data = await api<Snapshot>('/api/activities');
+        if (active) {
+          preparing = Boolean(data.preparing);
+          setSnapshot(data);
+          setError('');
+        }
+      } catch (err) {
         if (active) setError((err as Error).message);
-      });
+      } finally {
+        inFlight = false;
+      }
+    }
+    void poll();
+    const timer = setInterval(() => {
+      if (preparing) void poll();
+    }, 5_000);
+    document.addEventListener('visibilitychange', poll);
     return () => {
       active = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', poll);
     };
   }, []);
 
@@ -91,7 +106,10 @@ export default function CalendarPage() {
         return;
       }
       const target = e.target as HTMLElement | null;
-      if (target && target.closest('button, a, select, input, [data-calendar-item="true"]')) {
+      if (
+        target &&
+        target.closest('button, a, select, input, [data-calendar-item="true"]')
+      ) {
         return;
       }
       setSelectedDate(null);
@@ -292,8 +310,14 @@ export default function CalendarPage() {
     const isLeftSide = anchorCenter < calendarCenter;
 
     // Clamp anchor horizontal coordinates to viewport bounds
-    const clampedAnchorLeft = Math.max(PADDING, Math.min(anchorRect.left, viewportWidth - PADDING));
-    const clampedAnchorRight = Math.max(PADDING, Math.min(anchorRect.right, viewportWidth - PADDING));
+    const clampedAnchorLeft = Math.max(
+      PADDING,
+      Math.min(anchorRect.left, viewportWidth - PADDING),
+    );
+    const clampedAnchorRight = Math.max(
+      PADDING,
+      Math.min(anchorRect.right, viewportWidth - PADDING),
+    );
 
     const spaceLeft = clampedAnchorLeft - GAP - PADDING;
     const spaceRight = viewportWidth - PADDING - (clampedAnchorRight + GAP);
@@ -371,7 +395,7 @@ export default function CalendarPage() {
 
       <div
         className={`${styles.noticeStack} flex flex-col gap-3`}
-        aria-label="Notices and guides"
+        aria-label="Data status"
       >
         <DataStatusNotice
           error={error}
@@ -474,8 +498,8 @@ export default function CalendarPage() {
                 </span>
               </div>
               <p>
-                Bars span opening to closing/due date, inclusive. Select any date or activity
-                for details.
+                Bars span opening to closing/due date, inclusive. Select any date or
+                activity for details.
               </p>
             </div>
 
@@ -508,13 +532,18 @@ export default function CalendarPage() {
                     const lanes = Math.max(4, ...ranges.map((r) => r.lane + 1));
 
                     return (
-                      <div key={week[0]} className="flex flex-col" data-calendar-week="true">
+                      <div
+                        key={week[0]}
+                        className="flex flex-col"
+                        data-calendar-week="true"
+                      >
                         {/* Top row: Day numbers across the 7 days */}
                         <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-100 bg-slate-50/40">
                           {week.map((day) => {
                             const isCurrentMonth = day.startsWith(month);
                             const isToday = day === today;
-                            const isDateSelected = selectedDate === day && anchorInfo?.type === 'date';
+                            const isDateSelected =
+                              selectedDate === day && anchorInfo?.type === 'date';
 
                             return (
                               <button
@@ -584,7 +613,8 @@ export default function CalendarPage() {
                             {week.map((day) => {
                               const isToday = day === today;
                               const isCurrentMonth = day.startsWith(month);
-                              const isDateSelected = selectedDate === day && anchorInfo?.type === 'date';
+                              const isDateSelected =
+                                selectedDate === day && anchorInfo?.type === 'date';
                               return (
                                 <div
                                   key={day}
@@ -625,7 +655,7 @@ export default function CalendarPage() {
                                 const activityKey = `${item.id}-${weekIdx}-${start}`;
                                 const isFocused = selectedActivityId === item.id;
                                 const isQuiz = item.kind === 'quiz';
-                                const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(item.dueAt)}`;
+                                const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(scheduleAt(item))}`;
                                 const roundLeft = !continuesBefore;
                                 const roundRight = !continuesAfter;
                                 const rounding =
@@ -763,14 +793,15 @@ export default function CalendarPage() {
                             <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                               <th className="py-2 pl-3 pr-2 whitespace-nowrap">Type</th>
                               <th className="py-2 px-2">Activity</th>
-                              <th className="py-2 pl-2 pr-3 text-right whitespace-nowrap">Deadline</th>
+                              <th className="py-2 pl-2 pr-3 text-right whitespace-nowrap">
+                                Deadline
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {selectedDateActivities.map((act) => {
                               const isItemQuiz = act.kind === 'quiz';
-                              const isItemFocused =
-                                focusedActivity?.id === act.id;
+                              const isItemFocused = focusedActivity?.id === act.id;
                               const dueDay = act.dueAt ? dayKey(act.dueAt) : null;
                               const isDueToday = dueDay === selectedDate;
                               return (
@@ -793,9 +824,7 @@ export default function CalendarPage() {
                                     >
                                       <span
                                         className={`h-1.5 w-1.5 rounded-full ${
-                                          isItemQuiz
-                                            ? 'bg-blue-600'
-                                            : 'bg-emerald-600'
+                                          isItemQuiz ? 'bg-blue-600' : 'bg-emerald-600'
                                         }`}
                                       />
                                       {isItemQuiz ? 'Quiz' : 'Assign'}
@@ -819,19 +848,13 @@ export default function CalendarPage() {
                                     {act.dueAt ? (
                                       <span
                                         className={
-                                          isDueToday
-                                            ? 'font-bold text-amber-800'
-                                            : ''
+                                          isDueToday ? 'font-bold text-amber-800' : ''
                                         }
                                       >
-                                        {isDueToday
-                                          ? 'Due today'
-                                          : dateLabel(act.dueAt)}
+                                        {isDueToday ? 'Due today' : dateLabel(act.dueAt)}
                                       </span>
                                     ) : (
-                                      <span className="text-slate-400">
-                                        No date
-                                      </span>
+                                      <span className="text-slate-400">No date</span>
                                     )}
                                   </td>
                                 </tr>
@@ -879,9 +902,7 @@ export default function CalendarPage() {
                             </div>
                             <div className="rounded-md border border-slate-200/80 bg-white p-1.5">
                               <span className="block text-slate-400 text-[10px]">
-                                {focusedActivity.kind === 'quiz'
-                                  ? 'Closes'
-                                  : 'Due'}
+                                {focusedActivity.kind === 'quiz' ? 'Closes' : 'Due'}
                               </span>
                               <span className="font-semibold text-slate-700 truncate block">
                                 {focusedActivity.dueAt

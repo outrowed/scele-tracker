@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import type { Activity } from '../model';
+import { dateLabel, scheduleAt, type Activity } from '../model';
 import { weekRanges, type PlannerDay } from '../planner';
-import { dateLabel } from '../model';
 
 interface WeekBarProps {
   days: PlannerDay[];
@@ -76,9 +75,7 @@ export function WeekBar({
                   type="button"
                   aria-label={`Filter activities on ${day.dateKey}`}
                   aria-pressed={isSelected}
-                  onClick={() =>
-                    onSelectDay(isSelected ? null : day.dateKey)
-                  }
+                  onClick={() => onSelectDay(isSelected ? null : day.dateKey)}
                   className={`relative flex items-center justify-between px-3 py-3 text-sm transition cursor-pointer text-left ${
                     isSelected
                       ? 'bg-teal-100/90 text-teal-900 font-medium'
@@ -150,7 +147,7 @@ export function WeekBar({
             >
               {ranges.map(
                 ({ item, start, end, lane, continuesBefore, continuesAfter }) => {
-                  const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(item.dueAt)}`;
+                  const label = `${item.name} · ${item.courseName} · Opens: ${dateLabel(item.opensAt)} · Closes/due: ${dateLabel(scheduleAt(item))}`;
                   const isQuiz = item.kind === 'quiz';
                   const roundLeft = !continuesBefore;
                   const roundRight = !continuesAfter;

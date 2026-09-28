@@ -1,10 +1,10 @@
 import { ArrowUpRight, ClipboardList, Timer, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { dateLabel, remaining, status, type Activity } from '../model';
+import { dateLabel, scheduleAt, type Activity } from '../model';
+import { ActivityStatus } from './ActivityStatus';
 import styles from './ActivityCard.module.css';
 
 export function ActivityCard({ item }: { item: Activity }) {
-  const past = status(item) === 'past';
   const Icon = item.kind === 'quiz' ? Timer : ClipboardList;
   return (
     <article className={`${styles.card} group`}>
@@ -37,15 +37,11 @@ export function ActivityCard({ item }: { item: Activity }) {
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
           <span className="inline-flex items-center gap-1.5">
             <Clock3 size={13} aria-hidden="true" />
-            {dateLabel(item.dueAt)}
+            {dateLabel(scheduleAt(item))}
           </span>
         </div>
       </div>
-      <span
-        className={`${styles.deadline} rounded-full px-2.5 py-1 text-[10px] font-semibold ${past ? 'bg-amber-50 text-amber-800' : 'bg-teal-50 text-teal-800'}`}
-      >
-        {remaining(item.dueAt)}
-      </span>
+      <ActivityStatus item={item} />
     </article>
   );
 }

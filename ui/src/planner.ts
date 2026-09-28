@@ -1,4 +1,4 @@
-import type { Activity } from './model';
+import { scheduleAt, type Activity } from './model';
 
 /**
  * Returns date-only string in YYYY-MM-DD representing the timestamp in user's local time.
@@ -81,8 +81,8 @@ export function getWeekDays(
 
     // Group activities matching this dateKey
     const dayActivities = activities.filter((act) => {
-      if (!act.dueAt) return false;
-      return dayKey(act.dueAt) === dateKeyStr;
+      const date = scheduleAt(act);
+      return date != null && dayKey(date) === dateKeyStr;
     });
 
     const quizzes = dayActivities.filter((act) => act.kind === 'quiz');
@@ -122,11 +122,12 @@ export function deadlineTimeState(
   item: Activity,
   now = Date.now() / 1000,
 ): 'today' | 'upcoming' | 'past' | 'undated' {
-  if (!item.dueAt) return 'undated';
+  const date = scheduleAt(item);
+  if (!date) return 'undated';
   const todayKey = dayKey(now);
-  const itemKey = dayKey(item.dueAt);
+  const itemKey = dayKey(date);
   if (todayKey === itemKey) return 'today';
-  if (item.dueAt < now) return 'past';
+  if (date < now) return 'past';
   return 'upcoming';
 }
 
@@ -143,8 +144,8 @@ export function deadlineTimeState(
  * - Undated activities are placed at the end.
  */
 export function compareNewestFirst(a: Activity, b: Activity): number {
-  const timeA = a.dueAt ?? a.opensAt;
-  const timeB = b.dueAt ?? b.opensAt;
+  const timeA = scheduleAt(a) ?? a.opensAt;
+  const timeB = scheduleAt(b) ?? b.opensAt;
   if (timeA == null && timeB != null) return 1;
   if (timeB == null && timeA != null) return -1;
   if (timeA != null && timeB != null && timeB !== timeA) {
@@ -158,8 +159,8 @@ export function compareNewestFirst(a: Activity, b: Activity): number {
 
 /** Inclusive local-date range; a single known endpoint is shown on that day. */
 export function activityRange(item: Activity) {
-  const start = item.opensAt ?? item.dueAt;
-  const end = item.dueAt ?? item.opensAt;
+  const start = item.opensAt ?? scheduleAt(item);
+  const end = scheduleAt(item) ?? item.opensAt;
   if (start == null || end == null) return null;
   const endKey = dayKey(end);
   return { start: start > end ? endKey : dayKey(start), end: endKey };

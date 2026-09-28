@@ -4,6 +4,11 @@ import { MoodleResponse } from '@didactika/moodle-client';
 import type { Account, Activity, SyncResult } from './types.js';
 
 export const MOODLE = 'https://scele.cs.ui.ac.id';
+export class MoodleSessionExpired extends Error {
+  constructor() {
+    super('Moodle session expired');
+  }
+}
 export function plainText(html: unknown): string {
   if (typeof html !== 'string') return '';
   const $ = load(html);
@@ -73,6 +78,8 @@ export class MoodleSession {
       if (!response.ok) throw new Error('Moodle request failed');
       const text = await response.text();
       if (text.length > 8_000_000) throw new Error('Moodle response too large');
+      if (url.pathname === '/login/index.php' && path !== '/login/index.php')
+        throw new MoodleSessionExpired();
       return text;
     }
     throw new Error('Too many Moodle redirects');
@@ -95,6 +102,13 @@ export class MoodleSession {
       throw new Error('Moodle authentication failed');
     this.sesskey = key[1];
   }
+  async checkValid(): Promise<void> {
+    const html = await this.request('/my/');
+    const $ = load(html);
+    if ($('input[name="password"]').length) throw new MoodleSessionExpired();
+    if (!/"sesskey"\s*:\s*"[a-zA-Z0-9]+"/.test(html))
+      throw new Error('Moodle session verification unavailable');
+  }
   async call<T>(methodname: string, args: object): Promise<T> {
     const text = await this.request(
       `/lib/ajax/service.php?sesskey=${encodeURIComponent(this.sesskey)}`,
@@ -105,6 +119,14 @@ export class MoodleSession {
       },
     );
     const result = JSON.parse(text);
+    if (
+      Array.isArray(result) &&
+      result[0]?.error &&
+      /invalidsesskey|requirelogin|notloggedin|session expired/i.test(
+        String(result[0]?.exception?.errorcode || result[0]?.exception?.message || ''),
+      )
+    )
+      throw new MoodleSessionExpired();
     if (!Array.isArray(result) || result[0]?.error || !result[0]?.data)
       throw new Error('Moodle AJAX unavailable');
     return result[0].data;

@@ -31,7 +31,9 @@ describe('authentication boundary', () => {
     const get = vi
       .fn()
       .mockResolvedValue({ activities: [], sources: [], configured: false });
-    const response = await request(createApp({ get }))
+    const response = await request(
+      createApp({ get }, async () => ({ activities: [], incomplete: false })),
+    )
       .get('/api/activities')
       .set('Cookie', `scele_session=${token()}`);
     expect(response.status).toBe(200);

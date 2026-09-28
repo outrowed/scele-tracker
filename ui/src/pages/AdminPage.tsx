@@ -15,6 +15,18 @@ export default function AdminPage() {
   } | null>(null);
   const [error, setError] = useState('');
   const [resetMessage, setResetMessage] = useState('');
+  const [shared, setShared] = useState<{
+    activities: {
+      id: string;
+      name: string;
+      courseName: string;
+      dueAt: number | null;
+      source?: string;
+    }[];
+    stale: boolean;
+    preparing: boolean;
+  } | null>(null);
+  const [sharedError, setSharedError] = useState('');
 
   // Request protected diagnostics when this page mounts; the API enforces the admin role.
   useEffect(() => {
@@ -23,9 +35,18 @@ export default function AdminPage() {
       .catch((error) => setError(error.message));
   }, []);
 
+  async function inspectShared() {
+    setSharedError('');
+    try {
+      setShared(await api<NonNullable<typeof shared>>('/api/admin/shared-activities'));
+    } catch (error) {
+      setSharedError((error as Error).message);
+    }
+  }
+
   function handleResetLocalStorage() {
     resetLocalPreferences();
-    setResetMessage('Local storage and dismissed notices have been reset.');
+    setResetMessage('Local preferences have been reset.');
     setTimeout(() => setResetMessage(''), 4000);
   }
 
@@ -48,14 +69,11 @@ export default function AdminPage() {
       {/* Admin actions: Local testing and preferences reset */}
       <Card as="section" className="mt-6">
         <SectionTitle>Developer &amp; Admin Controls</SectionTitle>
-        <SectionDescription>
-          Reset client-side stored data such as dismissed notices, slogans, and local
-          preferences.
-        </SectionDescription>
+        <SectionDescription>Reset client-side local preferences.</SectionDescription>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button type="button" onClick={handleResetLocalStorage}>
             <RotateCcw size={15} />
-            Reset Local Storage / Notices
+            Reset Local Preferences
           </Button>
           {resetMessage && (
             <span
@@ -87,6 +105,40 @@ export default function AdminPage() {
               Last checked:{' '}
               {data.checkedAt ? new Date(data.checkedAt).toLocaleString() : 'Never'}
             </p>
+          </>
+        )}
+      </Card>
+
+      <Card as="section" className="mt-6">
+        <SectionTitle>Shared account snapshot</SectionTitle>
+        <SectionDescription>
+          Admin-only diagnostic view of the shared sync. It is not mixed into any
+          visitor's personal feed.
+        </SectionDescription>
+        <Button type="button" className="mt-4" onClick={inspectShared}>
+          Inspect shared snapshot
+        </Button>
+        {sharedError && (
+          <p role="alert" className="mt-3 text-sm text-amber-800">
+            {sharedError}
+          </p>
+        )}
+        {shared && (
+          <>
+            <p className="mt-4 text-sm text-slate-600">
+              {shared.activities.length} activities ·{' '}
+              {shared.preparing ? 'Preparing' : shared.stale ? 'Stale' : 'Current'}
+            </p>
+            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm text-slate-700">
+              {shared.activities.map((item) => (
+                <li key={item.id} className="border-b border-slate-100 pb-2">
+                  {item.courseName} · {item.name} ·{' '}
+                  {item.dueAt
+                    ? new Date(item.dueAt * 1000).toLocaleString()
+                    : 'No deadline'}
+                </li>
+              ))}
+            </ul>
           </>
         )}
       </Card>
