@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Calendar, Layers3, LogOut, Menu, Shield, User, X } from 'lucide-react';
+import { BookOpen, Calendar, GraduationCap, Layers3, LogOut, Menu, Shield, User, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Container } from './Container';
-import { Button } from './Button';
+import { ProfileMenu } from './ProfileMenu';
+import { ThemeSelect } from './ThemeSelect';
 import styles from './SiteHeader.module.css';
 
 export function SiteHeader() {
@@ -34,6 +35,9 @@ export function SiteHeader() {
         ? 'border-l-4 border-teal-700 bg-teal-50 dark:bg-teal-950 font-semibold text-teal-800 dark:text-teal-200'
         : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-teal-700 dark:hover:text-teal-300'
     }`;
+
+  const prodiLabel = user?.academicInfo || (user?.kd_org ? `${user.prodi || 'Ilmu Komputer'} (${user.kd_org})` : (user?.prodi || 'Ilmu Komputer'));
+  const classLabel = user ? (user.angkatan ? `Class of ${user.angkatan}` : 'Class of 2026') : '';
 
   return (
     <header className="border-b border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800">
@@ -109,43 +113,12 @@ export function SiteHeader() {
                   />
                   <span>Calendar</span>
                 </Link>
-
-                {user.role === 'admin' && (
-                  <Link
-                    to="/admin"
-                    aria-current={isAdminActive ? 'page' : undefined}
-                    className={desktopNavLinkClass(isAdminActive)}
-                  >
-                    <Shield
-                      size={16}
-                      className={
-                        isAdminActive
-                          ? 'text-teal-700 dark:text-teal-300'
-                          : 'text-slate-400 dark:text-slate-400'
-                      }
-                    />
-                    <span>Admin</span>
-                  </Link>
-                )}
               </nav>
 
               <div className="h-6 w-px bg-slate-200/80 dark:bg-slate-700/80" />
 
-              {/* Desktop user profile (chipless) */}
-              <div
-                className="flex items-center gap-2 text-slate-600 dark:text-slate-300"
-                title={`${user.fullname} (${user.role})`}
-              >
-                <User size={16} className="text-slate-400 dark:text-slate-400" />
-                <span className="hidden text-sm font-medium text-slate-600 dark:text-slate-300 lg:inline">
-                  {user.fullname}
-                </span>
-              </div>
-
-              <Button onClick={logout} aria-label="Sign out" className="!px-3">
-                <LogOut size={16} />
-                <span className="hidden xl:inline">Sign out</span>
-              </Button>
+              {/* Desktop Profile Popup Menu */}
+              <ProfileMenu />
             </div>
 
             {/* Mobile hamburger toggle button */}
@@ -184,9 +157,33 @@ export function SiteHeader() {
               <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {user.fullname}
               </p>
-              <p className="text-xs capitalize text-slate-400 dark:text-slate-400">
-                {user.role}
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                <span>{user.username}</span>
+                {user.role !== 'user' && (
+                  <>
+                    {' · '}
+                    <span className="font-medium text-teal-700 dark:text-teal-400 capitalize">
+                      {user.role === 'admin' ? 'Administrator' : user.role}
+                    </span>
+                  </>
+                )}
               </p>
+              {(prodiLabel || classLabel) && (
+                <div className="mt-1.5 flex flex-col gap-0.5 text-xs text-slate-600 dark:text-slate-300">
+                  {prodiLabel && (
+                    <div className="flex items-center gap-1.5">
+                      <GraduationCap size={13} className="shrink-0 text-slate-400 dark:text-slate-400" />
+                      <span className="truncate">{prodiLabel}</span>
+                    </div>
+                  )}
+                  {classLabel && (
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Calendar size={13} className="shrink-0 text-slate-400 dark:text-slate-400" />
+                      <span className="truncate">{classLabel}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
@@ -256,6 +253,13 @@ export function SiteHeader() {
                 Administration
               </Link>
             )}
+
+            {/* Mobile Theme Selector */}
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Theme</span>
+              <ThemeSelect />
+            </div>
+
             <div className="my-2 border-t border-slate-100 dark:border-slate-700" />
             <button
               type="button"

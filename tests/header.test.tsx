@@ -130,4 +130,71 @@ describe('SiteHeader mobile hamburger navigation', () => {
     expect(screen.getByText(/checking session…/i)).toBeTruthy();
     expect(screen.queryByRole('link', { name: /^sign in$/i })).toBeNull();
   });
+
+  it('renders desktop profile popup menu with admin link, theme selector, and prodi info', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: {
+        username: '2606***',
+        fullname: 'Taruna Prasetya',
+        role: 'admin',
+        prodi: 'Ilmu Komputer',
+        angkatan: '2026',
+        kd_org: '01.00.12.01',
+        academicInfo: 'Ilmu Komputer (01.00.12.01)',
+      },
+      loading: false,
+      error: '',
+      logout: logoutMock,
+    });
+
+    render(
+      <MemoryRouter>
+        <SiteHeader />
+      </MemoryRouter>,
+    );
+
+    // Profile menu trigger button
+    const accountBtn = screen.getByRole('button', { name: /account menu/i });
+    expect(accountBtn).toBeTruthy();
+    expect(screen.queryByRole('menu', { name: /profile popup menu/i })).toBeNull();
+
+    // Click to open profile popup menu
+    await act(async () => {
+      fireEvent.click(accountBtn);
+    });
+
+    const menu = screen.getByRole('menu', { name: /profile popup menu/i });
+    expect(menu).toBeTruthy();
+    const menuScope = within(menu);
+
+    // Displays name, username (without @), administrator role badge, prodi with code, and class year
+    expect(menuScope.getByText('Taruna Prasetya')).toBeTruthy();
+    expect(menuScope.getByText(/2606/)).toBeTruthy();
+    expect(menuScope.queryByText(/@2606/)).toBeNull();
+    expect(menuScope.getByText('Administrator')).toBeTruthy();
+    expect(menuScope.getByText('Ilmu Komputer (01.00.12.01)')).toBeTruthy();
+    expect(menuScope.getByText('Class of 2026')).toBeTruthy();
+
+    // Contains Admin Page link (for admin role)
+    const adminLink = menuScope.getByRole('menuitem', { name: /admin page/i });
+    expect(adminLink.getAttribute('href')).toBe('/admin');
+
+    // Contains Theme selector combobox
+    expect(menuScope.getByRole('combobox', { name: /color theme/i })).toBeTruthy();
+
+    // Contains Sign out button
+    const signOutBtn = menuScope.getByRole('menuitem', { name: /sign out/i });
+    await act(async () => {
+      fireEvent.click(signOutBtn);
+    });
+
+    expect(logoutMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu', { name: /profile popup menu/i })).toBeNull();
+  });
 });

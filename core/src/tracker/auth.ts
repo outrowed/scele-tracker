@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { roleFor } from './roles.js';
 import { settings } from './config.js';
 import { casFormLogin } from './cas.js';
+import { formatAcademicInfo, deriveProdi, deriveClassYear } from './student.js';
 import {
   setUserMoodleSession,
   loginMoodleUser,
@@ -35,7 +36,20 @@ export function sessionUser(token: unknown) {
       typeof value.fullname !== 'string'
     )
       return null;
-    return { username: value.username, fullname: value.fullname };
+    const prodi = typeof (value as any).prodi === 'string' ? (value as any).prodi : undefined;
+    const angkatan = typeof (value as any).angkatan === 'string' ? (value as any).angkatan : undefined;
+    const kd_org = typeof (value as any).kd_org === 'string' ? (value as any).kd_org : undefined;
+    const academicInfo = typeof (value as any).academicInfo === 'string'
+      ? (value as any).academicInfo
+      : formatAcademicInfo({ username: value.username, prodi, angkatan, kd_org });
+    return {
+      username: value.username,
+      fullname: value.fullname,
+      prodi: prodi || 'Ilmu Komputer',
+      angkatan: angkatan || deriveClassYear(value.username) || '2026',
+      kd_org,
+      academicInfo,
+    };
   } catch {
     return null;
   }
@@ -65,9 +79,32 @@ export function parseIdentity(xml: string) {
   if (!success || typeof success.user !== 'string' || !success.user.trim())
     throw new Error('CAS authentication failed');
   const fullname = success.attributes?.nama || success.attributes?.cn || success.user;
+
+  const npm = typeof success.attributes?.npm === 'string' ? success.attributes.npm : undefined;
+  const kd_org = typeof success.attributes?.kd_org === 'string' ? success.attributes.kd_org : undefined;
+  const jurusan = typeof success.attributes?.jurusan === 'string' ? success.attributes.jurusan : undefined;
+  const prodiAttr = typeof success.attributes?.prodi === 'string' ? success.attributes.prodi : undefined;
+  const angkatanAttr = typeof success.attributes?.angkatan === 'string' ? success.attributes.angkatan : undefined;
+
+  const academicInfo = formatAcademicInfo({
+    npm,
+    kd_org,
+    jurusan,
+    prodi: prodiAttr,
+    angkatan: angkatanAttr,
+    username: success.user,
+  });
+  const prodi = deriveProdi(kd_org, jurusan, prodiAttr);
+  const angkatan = angkatanAttr || deriveClassYear(npm) || deriveClassYear(success.user) || '2026';
+
   return {
     username: success.user,
     fullname: typeof fullname === 'string' ? fullname : success.user,
+    npm,
+    kd_org,
+    prodi,
+    angkatan,
+    academicInfo,
   };
 }
 

@@ -2,6 +2,7 @@ import { CookieJar } from 'tough-cookie';
 import { load } from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
 import { settings } from './config.js';
+import { formatAcademicInfo, deriveProdi, deriveClassYear } from './student.js';
 
 export function parseIdentity(xml: string) {
   if (xml.length > 100_000 || /<!DOCTYPE|<!ENTITY/i.test(xml))
@@ -11,9 +12,32 @@ export function parseIdentity(xml: string) {
   if (!success || typeof success.user !== 'string' || !success.user.trim())
     throw new Error('CAS authentication failed');
   const fullname = success.attributes?.nama || success.attributes?.cn || success.user;
+
+  const npm = typeof success.attributes?.npm === 'string' ? success.attributes.npm : undefined;
+  const kd_org = typeof success.attributes?.kd_org === 'string' ? success.attributes.kd_org : undefined;
+  const jurusan = typeof success.attributes?.jurusan === 'string' ? success.attributes.jurusan : undefined;
+  const prodiAttr = typeof success.attributes?.prodi === 'string' ? success.attributes.prodi : undefined;
+  const angkatanAttr = typeof success.attributes?.angkatan === 'string' ? success.attributes.angkatan : undefined;
+
+  const academicInfo = formatAcademicInfo({
+    npm,
+    kd_org,
+    jurusan,
+    prodi: prodiAttr,
+    angkatan: angkatanAttr,
+    username: success.user,
+  });
+  const prodi = deriveProdi(kd_org, jurusan, prodiAttr);
+  const angkatan = angkatanAttr || deriveClassYear(npm) || deriveClassYear(success.user) || '2026';
+
   return {
     username: success.user,
     fullname: typeof fullname === 'string' ? fullname : success.user,
+    npm,
+    kd_org,
+    prodi,
+    angkatan,
+    academicInfo,
   };
 }
 

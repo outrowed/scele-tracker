@@ -1,0 +1,4 @@
+/* Scoped CSS Module for Profile Menu if custom responsive tweaks or popups need isolated rules */
+.popup {
+  transform-origin: top right;
+}
