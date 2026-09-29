@@ -98,6 +98,9 @@ describe('SiteHeader mobile hamburger navigation', () => {
       '/calendar',
     );
     expect(
+      navScope.getByRole('link', { name: /backrooms/i }).getAttribute('href'),
+    ).toBe('/rooms');
+    expect(
       navScope.getByRole('link', { name: /administration/i }).getAttribute('href'),
     ).toBe('/admin');
     expect(screen.getAllByText('Test Student').length).toBeGreaterThanOrEqual(1);
