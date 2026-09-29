@@ -144,38 +144,20 @@ export default function DashboardPage() {
 
       {/* Main activities section with table layout */}
       <section className="min-w-0">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <SectionTitle>Activities</SectionTitle>
-          {selectedDayKey && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 dark:bg-teal-950 pl-2.5 pr-1.5 py-1 text-xs font-semibold text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800">
-                <span>Day: {selectedDayKey}</span>
-                <button
-                  type="button"
-                  aria-label="Clear date filter"
-                  onClick={() => setSelectedDayKey(null)}
-                  className="rounded-sm p-0.5 text-teal-600 dark:text-teal-300 transition hover:bg-teal-100 dark:hover:bg-teal-900 hover:text-teal-900 dark:hover:text-teal-100 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </span>
-            </div>
-          )}
         </div>
 
-        <div className={`${styles.searchRow} mt-4`}>
-          <label className={styles.searchBox}>
-            <Search size={17} />
-            <input
-              aria-label="Search activities"
-              placeholder="Search activities or courses…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-        </div>
-
-        <ActivityFilters items={items} value={filters} onChange={setFilters} />
+        <ActivityFilters
+          items={items}
+          value={filters}
+          onChange={setFilters}
+          search={query}
+          onSearchChange={setQuery}
+          selectedDayKey={selectedDayKey}
+          onClearDay={() => setSelectedDayKey(null)}
+          className="mb-6"
+        />
 
         <div aria-live="polite">
           {!data ? (

@@ -194,20 +194,14 @@ export default function CoursesPage() {
 
       {/* Grouped courses and filter controls */}
       <section className="min-w-0">
-        {/* Search and kind/course filters */}
-        <div className={styles.searchRow}>
-          <label className={styles.searchBox}>
-            <Search size={17} />
-            <input
-              aria-label="Search activities"
-              placeholder="Search activities or courses…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-        </div>
-
-        <ActivityFilters items={items} value={filters} onChange={setFilters} />
+        <ActivityFilters
+          items={items}
+          value={filters}
+          onChange={setFilters}
+          search={query}
+          onSearchChange={setQuery}
+          className="mb-6"
+        />
 
         {/* Activities grouped by course */}
         <div className="flex flex-col gap-6" aria-live="polite">
