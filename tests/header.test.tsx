@@ -112,4 +112,22 @@ describe('SiteHeader mobile hamburger navigation', () => {
     // Menu should close on sign out
     expect(screen.queryByRole('navigation', { name: /mobile navigation/i })).toBeNull();
   });
+
+  it('renders a subtle checking session indicator during loading without sign in flash', () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: null,
+      loading: true,
+      error: '',
+      logout: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <SiteHeader />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/checking session…/i)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /^sign in$/i })).toBeNull();
+  });
 });

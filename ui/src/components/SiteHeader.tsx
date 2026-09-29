@@ -7,7 +7,7 @@ import { Button } from './Button';
 import styles from './SiteHeader.module.css';
 
 export function SiteHeader() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -48,7 +48,12 @@ export function SiteHeader() {
           <span className="whitespace-nowrap">SCELE Tracker</span>
           <span className={styles.brandTag}>Made with ❤️ by #CSUI2026</span>
         </Link>
-        {user ? (
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+            <div className="h-2 w-2 rounded-full bg-teal-600 dark:bg-teal-400 animate-pulse" />
+            <span className="hidden sm:inline">Checking session…</span>
+          </div>
+        ) : user ? (
           <>
             {/* Desktop navigation matching drawer layout & active tab indicators */}
             <div className="hidden sm:flex sm:items-center sm:gap-2 md:gap-3">

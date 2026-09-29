@@ -1,8 +1,9 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SiteHeader } from './SiteHeader';
 import { SiteFooter } from './SiteFooter';
 import { Container } from './Container';
+import { PageSkeleton } from './PageSkeleton';
 import LandingPage from '../pages/LandingPage';
 import SignInPage from '../pages/SignInPage';
 import DashboardPage from '../pages/DashboardPage';
@@ -13,6 +14,8 @@ import CalendarPage from '../pages/CalendarPage';
 
 export function AppLayout() {
   const { user, loading, error } = useAuth();
+  const location = useLocation();
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -26,9 +29,11 @@ export function AppLayout() {
         </Container>
       )}
       {loading ? (
-        <Container as="main" className="py-20">
-          Checking your session…
-        </Container>
+        location.pathname === '/login' ? (
+          <SignInPage />
+        ) : (
+          <PageSkeleton pathname={location.pathname} />
+        )
       ) : !user ? (
         <Routes>
           <Route path="/" element={<LandingPage />} />
