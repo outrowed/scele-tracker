@@ -1,4 +1,6 @@
-import { load } from 'cheerio';
+import { load, type CheerioAPI } from 'cheerio';
+import { resolve } from 'node:path';
+import { openCache } from './cache.js';
 import {
   getUserMoodleSession,
   plainText,
@@ -79,6 +81,16 @@ export function completionFromActivityPage(
 
 type PersonalData = { activities: Activity[]; incomplete: boolean; preparing: boolean };
 
+let cache: ReturnType<typeof openCache> | undefined;
+function personalCache() {
+  return (cache ??= openCache(process.env.CACHE_DB_PATH || resolve('data/cache.sqlite')));
+}
+
+export function closePersonalCache() {
+  cache?.close();
+  cache = undefined;
+}
+
 const snapshots = new WeakMap<
   MoodleSession,
   {
@@ -103,7 +115,7 @@ export async function personalSnapshot(username: string) {
       Date.now() - cached.at >= 60_000 &&
       (!cached.failedAt || Date.now() - cached.failedAt >= 60_000)
     ) {
-      startEnrichment(cached, session);
+      startEnrichment(cached, session, username);
     }
     return copyData(cached.data);
   }
@@ -111,6 +123,7 @@ export async function personalSnapshot(username: string) {
   const entry: NonNullable<ReturnType<typeof snapshots.get>> = { at: Date.now() };
   snapshots.set(session, entry);
   entry.pending = (async () => {
+    const db = personalCache();
     const { courses } = await session.call<{
       courses: { id: number; fullname: string }[];
     }>('core_course_get_enrolled_courses_by_timeline_classification', {
@@ -119,64 +132,83 @@ export async function personalSnapshot(username: string) {
       offset: 0,
     });
     if (!Array.isArray(courses)) throw new Error('Invalid Moodle courses');
-    const activities: Activity[] = [];
+    db.setUserCourses(username, courses, Date.now());
+    const shared = db.getCourseSyncStatus(courses.map((course) => course.id));
+    const ready =
+      shared.length === courses.length &&
+      shared.every((state) => Date.now() - state.updatedAt < 60 * 60_000);
+    // Enrollment was just verified. Serve cached definitions, dates and this user's
+    // completion evidence together, even when a course needs revalidation.
+    const cachedActivities = db.getActivitiesForUser(username);
+    if (ready || cachedActivities.length) {
+      const data: PersonalData = {
+        activities: cachedActivities,
+        incomplete: false,
+        preparing: false,
+      };
+      entry.data = data;
+      entry.courses = courses;
+      entry.at = 0;
+      startEnrichment(entry, session, username);
+      return data;
+    }
     let incomplete = false;
     const discovered = await mapLimited(courses, 3, async (course) => {
-      const found: Activity[] = [];
       try {
         const $ = load(await session.request(`/course/view.php?id=${course.id}`));
         if ($('input[name="password"]').length) throw new MoodleSessionExpired();
-        $('a[href]').each((_i, element) => {
-          const url = new URL($(element).attr('href') || '', 'https://scele.cs.ui.ac.id');
-          const match = url.pathname.match(/^\/mod\/(assign|quiz)\/view\.php$/);
-          const cmid = Number(url.searchParams.get('id'));
-          if (
-            url.origin !== 'https://scele.cs.ui.ac.id' ||
-            !match ||
-            !Number.isSafeInteger(cmid) ||
-            cmid <= 0
-          )
-            return;
-          const kind = match[1] === 'assign' ? 'assignment' : 'quiz';
-          const id = `personal-${kind}-${cmid}`;
-          if (found.some((item) => item.id === id)) return;
-          const node = $(element).closest('li.activity, .activity');
-          const name = $(element).find('.instancename').clone();
-          name.find('.accesshide').remove();
-          found.push({
-            id,
-            kind,
-            courseId: course.id,
-            courseName: plainText(course.fullname),
-            name: plainText(name.text() || $(element).text()),
-            description: plainText(
-              node.find('.contentafterlink, .activity-description').first().html(),
-            ),
-            url: url.href,
-            opensAt: null,
-            dueAt: null,
-            cutoffAt: null,
-            timeLimit: null,
-            source: 'personal',
-            completion: completionFromMarkup($.html(node)),
-          });
-        });
+        return {
+          courseId: course.id,
+          items: parseCourseActivities($, course),
+          failed: false,
+        };
       } catch (error) {
         if (error instanceof MoodleSessionExpired) throw error;
         incomplete = true;
+        return { courseId: course.id, items: [] as Activity[], failed: true };
       }
-      return found;
     });
-    for (const found of discovered) {
-      for (const item of found) {
-        if (!activities.some((known) => known.id === item.id)) activities.push(item);
+    // Definitions are shared; completion evidence from course markup is user-owned.
+    // A course with a failed scrape is never replaced with a partial empty result.
+    for (const res of discovered) {
+      if (!res.failed) {
+        const found = res.items;
+        const sync = db.getCourseSyncStatus([res.courseId])[0];
+        if (!sync || Date.now() - sync.updatedAt >= 60 * 60_000) {
+          if (found.length) {
+            db.replaceCourseActivities(res.courseId, found, Date.now());
+          } else {
+            db.setCourseSyncStatus(res.courseId, Date.now());
+          }
+        }
+        if (found.length) {
+          db.updateUserActivityState(
+            username,
+            found
+              .filter((item) => item.completion && item.completion !== 'unknown')
+              .map((item) => ({
+                activityId: item.id,
+                completion: item.completion!,
+              })),
+            Date.now(),
+          );
+        }
       }
     }
-    const data: PersonalData = { activities, incomplete, preparing: true };
+    // Include calendar-only activities from the cache and preserve their dates
+    // and personal evidence while discovery/enrichment is still running.
+    const data: PersonalData = {
+      activities: db.getActivitiesForUser(username).map((item) => ({
+        ...item,
+        datesPending: item.dueAt == null && item.closeAt == null,
+      })),
+      incomplete,
+      preparing: true,
+    };
     entry.data = data;
     entry.courses = courses;
     entry.at = Date.now();
-    startEnrichment(entry, session);
+    startEnrichment(entry, session, username);
     return data;
   })();
   try {
@@ -185,6 +217,49 @@ export async function personalSnapshot(username: string) {
     entry.pending = undefined;
     if (!entry.data) snapshots.delete(session);
   }
+}
+
+function parseCourseActivities(
+  $: CheerioAPI,
+  course: { id: number; fullname: string },
+): Activity[] {
+  const found: Activity[] = [];
+  $('a[href]').each((_i, element) => {
+    const url = new URL($(element).attr('href') || '', 'https://scele.cs.ui.ac.id');
+    const match = url.pathname.match(/^\/mod\/(assign|quiz)\/view\.php$/);
+    const cmid = Number(url.searchParams.get('id'));
+    if (
+      url.origin !== 'https://scele.cs.ui.ac.id' ||
+      !match ||
+      !Number.isSafeInteger(cmid) ||
+      cmid <= 0
+    )
+      return;
+    const kind = match[1] === 'assign' ? 'assignment' : 'quiz';
+    const id = `personal-${kind}-${cmid}`;
+    if (found.some((item) => item.id === id)) return;
+    const node = $(element).closest('li.activity, .activity');
+    const name = $(element).find('.instancename').clone();
+    name.find('.accesshide').remove();
+    found.push({
+      id,
+      kind,
+      courseId: course.id,
+      courseName: plainText(course.fullname),
+      name: plainText(name.text() || $(element).text()),
+      description: plainText(
+        node.find('.contentafterlink, .activity-description').first().html(),
+      ),
+      url: url.href,
+      opensAt: null,
+      dueAt: null,
+      cutoffAt: null,
+      timeLimit: null,
+      source: 'personal',
+      completion: completionFromMarkup($.html(node)),
+    });
+  });
+  return found;
 }
 
 // A small shared concurrency cap avoids serial latency without flooding SCELE.
@@ -222,14 +297,40 @@ function startEnrichment(
     courses?: { id: number; fullname: string }[];
   },
   session: MoodleSession,
+  username: string,
 ) {
   if (!entry.data || entry.enriching) return;
   const data = entry.data;
   data.preparing = true;
   entry.enriching = (async () => {
-    const activities = data.activities.map((item) => ({ ...item }));
+    const db = personalCache();
+    let activities = data.activities.map((item) => ({ ...item }));
     let incomplete = data.incomplete;
     const courses = entry.courses ?? [];
+    const stale = courses.filter((course) => {
+      const sync = db.getCourseSyncStatus([course.id])[0];
+      return !sync || Date.now() - sync.updatedAt >= 60 * 60_000;
+    });
+    await mapLimited(stale, 3, async (course) => {
+      try {
+        const $ = load(await session.request(`/course/view.php?id=${course.id}`));
+        if ($('input[name="password"]').length) throw new MoodleSessionExpired();
+        const found = parseCourseActivities($, course);
+        if (found.length) db.replaceCourseActivities(course.id, found, Date.now());
+        else db.setCourseSyncStatus(course.id, Date.now());
+        db.updateUserActivityState(
+          username,
+          found
+            .filter((item) => item.completion && item.completion !== 'unknown')
+            .map((item) => ({ activityId: item.id, completion: item.completion! })),
+          Date.now(),
+        );
+      } catch (error) {
+        if (error instanceof MoodleSessionExpired) throw error;
+        incomplete = true;
+      }
+    });
+    if (stale.length) activities = db.getActivitiesForUser(username);
     const now = new Date();
     await mapLimited(
       Array.from({ length: 19 }, (_, i) => i - 12),
@@ -322,12 +423,22 @@ function startEnrichment(
     // SCELE does not expose mod_assign/mod_quiz list web services to this
     // account. Activity pages are scoped to the signed-in user's cookie jar.
     // A missing or unfamiliar status stays unknown, never inferred from dates.
+    // Skip deep HTTP requests for long-past settled activities unless completion is unknown.
     entry.data = {
-      activities: activities.map((item) => ({ ...item })),
+      activities: activities.map(({ datesPending: _datesPending, ...item }) => item),
       incomplete,
       preparing: true,
     };
-    await mapLimited(activities, 3, async (item) => {
+    const nowSec = Date.now() / 1000;
+    const toCheck = activities.filter((item) => {
+      const deadline = item.dueAt ?? item.closeAt;
+      const isSettledPast =
+        typeof deadline === 'number' &&
+        deadline < nowSec - 14 * 86400 &&
+        item.completion !== 'unknown';
+      return !isSettledPast;
+    });
+    await mapLimited(toCheck, 3, async (item) => {
       try {
         const url = new URL(item.url);
         if (url.origin !== 'https://scele.cs.ui.ac.id') return;
@@ -343,7 +454,24 @@ function startEnrichment(
         incomplete = true;
       }
     });
-    entry.data = { activities, incomplete, preparing: false };
+    db.upsertActivities(activities, Date.now());
+    // Never persist a guessed status. Failed personal checks retain last evidence.
+    db.updateUserActivityState(
+      username,
+      activities
+        .filter((item) => item.completion && item.completion !== 'unknown')
+        .map((item) => ({
+          activityId: item.id,
+          completion: item.completion!,
+          submittedLate: item.submittedLate,
+        })),
+      Date.now(),
+    );
+    entry.data = {
+      activities: activities.map(({ datesPending: _datesPending, ...item }) => item),
+      incomplete,
+      preparing: false,
+    };
     entry.at = Date.now();
     entry.failedAt = incomplete ? Date.now() : undefined;
   })()

@@ -1,19 +1,25 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../core/src/app';
+import { openCache } from '../core/src/tracker/cache';
 import { settings } from '../core/src/tracker/config';
 import {
   completionFromMarkup,
   completionFromActivityPage,
   submittedLateFromActivityPage,
   personalSnapshot,
+  closePersonalCache,
 } from '../core/src/tracker/personal';
 import {
   setUserMoodleSession,
   clearUserMoodleSession,
   MoodleSession,
   MoodleSessionExpired,
+  getUserMoodleSession,
 } from '../core/src/tracker/moodle';
 import { activityState, personalStatus, type Activity } from '../ui/src/model';
 import { matchesFilters, emptyFilters } from '../ui/src/components/ActivityFilters';
@@ -48,7 +54,15 @@ const sample = (completion: Activity['completion'], dueAt: number | null): Activ
   completion,
 });
 
+let cacheDirectory: string;
+beforeEach(() => {
+  cacheDirectory = mkdtempSync(join(tmpdir(), 'personal-test-'));
+  process.env.CACHE_DB_PATH = join(cacheDirectory, 'cache.sqlite');
+});
 afterEach(() => {
+  closePersonalCache();
+  delete process.env.CACHE_DB_PATH;
+  rmSync(cacheDirectory, { recursive: true, force: true });
   clearUserMoodleSession('alice');
   clearUserMoodleSession('bob');
   vi.restoreAllMocks();
@@ -116,7 +130,7 @@ it('isolates per-user activity snapshots and detail links', async () => {
   ] as const) {
     vi.spyOn(session, 'call').mockImplementation(async (method: string) => {
       if (method.includes('enrolled_courses'))
-        return { courses: [{ id: 7, fullname: name }] } as never;
+        return { courses: [{ id: cmid, fullname: name }] } as never;
       return { weeks: [] } as never;
     });
     vi.spyOn(session, 'request').mockResolvedValue(
@@ -146,6 +160,177 @@ it('isolates per-user activity snapshots and detail links', async () => {
   ).toBe(404);
 });
 
+it('serves shared definitions only after confirming enrollment and keeps personal completion private', async () => {
+  const db = openCache(process.env.CACHE_DB_PATH!);
+  const activity = sample('unknown', 100);
+  db.replaceCourseActivities(7, [activity], Date.now());
+  db.setUserCourses('alice', [{ id: 7, fullname: 'Course' }], Date.now());
+  db.updateUserActivityState(
+    'alice',
+    [{ activityId: activity.id, completion: 'completed' }],
+    Date.now(),
+  );
+  db.close();
+  const session = new MoodleSession();
+  const call = vi.spyOn(session, 'call').mockImplementation(async (method: string) => {
+    if (method.includes('enrolled_courses'))
+      return { courses: [{ id: 7, fullname: 'Course' }] } as never;
+    return { weeks: [] } as never;
+  });
+  const page = vi.spyOn(session, 'request').mockResolvedValue('<div></div>');
+  setUserMoodleSession('alice', session);
+  const alice = await personalSnapshot('alice');
+  expect(alice.activities).toMatchObject([{ id: 'item', completion: 'completed' }]);
+  expect(page).not.toHaveBeenCalledWith('/course/view.php?id=7');
+  expect(call).toHaveBeenCalledWith(
+    'core_course_get_enrolled_courses_by_timeline_classification',
+    expect.anything(),
+  );
+  setUserMoodleSession('bob', new MoodleSession());
+  vi.spyOn(getUserMoodleSession('bob')!, 'call').mockResolvedValue({
+    courses: [],
+  } as never);
+  expect((await personalSnapshot('bob')).activities).toEqual([]);
+  await enriched('alice');
+  await enriched('bob');
+});
+
+it('reuses shared course definitions for another enrolled user but not their completion', async () => {
+  const activity = { ...sample('unknown', null), id: 'personal-assignment-11' };
+  const db = openCache(process.env.CACHE_DB_PATH!);
+  db.replaceCourseActivities(7, [activity], Date.now());
+  db.setUserCourses('alice', [{ id: 7, fullname: 'Course' }], Date.now());
+  db.updateUserActivityState(
+    'alice',
+    [{ activityId: activity.id, completion: 'completed' }],
+    Date.now(),
+  );
+  db.close();
+  const session = new MoodleSession();
+  vi.spyOn(session, 'call').mockImplementation(async (method: string) =>
+    method.includes('enrolled_courses')
+      ? ({ courses: [{ id: 7, fullname: 'Course' }] } as never)
+      : ({ weeks: [] } as never),
+  );
+  const page = vi.spyOn(session, 'request').mockResolvedValue('<div></div>');
+  setUserMoodleSession('bob', session);
+  const first = await personalSnapshot('bob');
+  expect(first.activities).toMatchObject([{ id: activity.id, completion: 'unknown' }]);
+  expect(page).not.toHaveBeenCalledWith('/course/view.php?id=7');
+  await enriched('bob');
+  const persisted = openCache(process.env.CACHE_DB_PATH!);
+  expect(persisted.getActivitiesForUser('alice')[0].completion).toBe('completed');
+  expect(persisted.getActivitiesForUser('bob')[0].completion).toBe('unknown');
+  persisted.close();
+});
+
+it('serves cached dates and personal status while stale course and calendar refreshes are pending', async () => {
+  const oldDate = Math.floor(Date.now() / 1000) - 86400;
+  const activity = {
+    ...sample('unknown', oldDate),
+    id: 'personal-assignment-11',
+    submittedLate: true,
+  };
+  const db = openCache(process.env.CACHE_DB_PATH!);
+  db.replaceCourseActivities(7, [activity], Date.now() - 2 * 60 * 60_000);
+  db.updateUserActivityState(
+    'alice',
+    [{ activityId: activity.id, completion: 'completed', submittedLate: true }],
+    Date.now(),
+  );
+  db.close();
+  const session = new MoodleSession();
+  let releaseCourse!: (html: string) => void;
+  const coursePage = new Promise<string>((resolve) => {
+    releaseCourse = resolve;
+  });
+  vi.spyOn(session, 'call').mockImplementation(async (method: string) =>
+    method.includes('enrolled_courses')
+      ? ({ courses: [{ id: 7, fullname: 'Course' }] } as never)
+      : ({ weeks: [] } as never),
+  );
+  const page = vi
+    .spyOn(session, 'request')
+    .mockImplementation(async (path) =>
+      path.startsWith('/course/') ? coursePage : '<div></div>',
+    );
+  setUserMoodleSession('alice', session);
+  const first = await personalSnapshot('alice');
+  expect(first.preparing).toBe(true);
+  expect(first.activities).toMatchObject([
+    { id: activity.id, dueAt: oldDate, completion: 'completed', submittedLate: true },
+  ]);
+  expect(page).toHaveBeenCalledWith('/course/view.php?id=7');
+  releaseCourse(
+    '<li class="activity"><a href="/mod/assign/view.php?id=11">Essay</a></li>',
+  );
+  const done = await enriched('alice');
+  expect(done.activities).toMatchObject([
+    { id: activity.id, dueAt: oldDate, completion: 'completed', submittedLate: true },
+  ]);
+  const persisted = openCache(process.env.CACHE_DB_PATH!);
+  expect(persisted.getActivitiesForUser('alice')).toMatchObject([
+    { id: activity.id, dueAt: oldDate, completion: 'completed', submittedLate: true },
+  ]);
+  persisted.close();
+});
+
+it('keeps cached calendar-only activities when a stale course page has no links', async () => {
+  const activity = { ...sample('unknown', 100), id: 'personal-assignment-88' };
+  const db = openCache(process.env.CACHE_DB_PATH!);
+  db.upsertActivities([activity], Date.now());
+  db.setCourseSyncStatus(7, Date.now() - 2 * 60 * 60_000);
+  db.close();
+  const session = new MoodleSession();
+  vi.spyOn(session, 'call').mockImplementation(async (method: string) =>
+    method.includes('enrolled_courses')
+      ? ({ courses: [{ id: 7, fullname: 'Course' }] } as never)
+      : ({ weeks: [] } as never),
+  );
+  vi.spyOn(session, 'request').mockResolvedValue('<div></div>');
+  setUserMoodleSession('alice', session);
+  expect((await personalSnapshot('alice')).activities).toMatchObject([
+    { id: activity.id, dueAt: 100 },
+  ]);
+  expect((await enriched('alice')).activities).toMatchObject([
+    { id: activity.id, dueAt: 100 },
+  ]);
+  const persisted = openCache(process.env.CACHE_DB_PATH!);
+  expect(persisted.getActivitiesForUser('alice')).toMatchObject([
+    { id: activity.id, dueAt: 100 },
+  ]);
+  persisted.close();
+});
+
+it('revalidates stale shared courses on request while preserving the last good rows on failure', async () => {
+  const activity = { ...sample('unknown', null), id: 'personal-assignment-11' };
+  const db = openCache(process.env.CACHE_DB_PATH!);
+  db.replaceCourseActivities(7, [activity], Date.now() - 2 * 60 * 60_000);
+  db.close();
+  const session = new MoodleSession();
+  vi.spyOn(session, 'call').mockImplementation(async (method: string) =>
+    method.includes('enrolled_courses')
+      ? ({ courses: [{ id: 7, fullname: 'Course' }] } as never)
+      : ({ weeks: [] } as never),
+  );
+  const page = vi.spyOn(session, 'request').mockImplementation(async (path) => {
+    if (path.startsWith('/course/')) throw new Error('offline');
+    return '<div></div>';
+  });
+  setUserMoodleSession('bob', session);
+  await personalSnapshot('bob');
+  const done = await enriched('bob');
+  expect(done.incomplete).toBe(true);
+  expect(done.activities).toMatchObject([{ id: activity.id }]);
+  expect(page).toHaveBeenCalledWith('/course/view.php?id=7');
+  const persisted = openCache(process.env.CACHE_DB_PATH!);
+  expect(persisted.getCourseSyncStatus([7])[0].updatedAt).toBeLessThan(
+    Date.now() - 60 * 60_000,
+  );
+  expect(persisted.getActivitiesForUser('bob')).toHaveLength(1);
+  persisted.close();
+});
+
 it('returns discovered activities before calendar/status enrichment finishes, then publishes dates', async () => {
   const session = new MoodleSession();
   let releaseCalendar!: (value: unknown) => void;
@@ -166,7 +351,7 @@ it('returns discovered activities before calendar/status enrichment finishes, th
   const first = await personalSnapshot('alice');
   expect(first).toMatchObject({
     preparing: true,
-    activities: [{ name: 'Task', dueAt: null }],
+    activities: [{ name: 'Task', dueAt: null, datesPending: true }],
   });
   const again = await personalSnapshot('alice');
   expect(again.preparing).toBe(true);
@@ -196,6 +381,7 @@ it('returns discovered activities before calendar/status enrichment finishes, th
     incomplete: false,
     activities: [{ dueAt: due, completion: 'completed' }],
   });
+  expect(done.activities[0].datesPending).not.toBe(true);
   expect(first.activities[0].dueAt).toBeNull();
 });
 

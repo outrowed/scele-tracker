@@ -10,6 +10,7 @@ export function ActivityStatus({
   now?: number;
 }) {
   const state = activityState(item, now);
+  const datesPending = state === 'unverified' && item.datesPending;
   const labels = {
     completed: 'Completed',
     overdue: 'Overdue',
@@ -47,7 +48,7 @@ export function ActivityStatus({
         aria-hidden="true"
         className={state === 'unverified' ? 'animate-spin' : undefined}
       />
-      {labels[state]}
+      {datesPending ? 'Checking dates…' : labels[state]}
     </span>
   );
 }

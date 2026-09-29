@@ -14,6 +14,8 @@ export type Activity = {
   closeAt?: number | null;
   timeLimit: number | null;
   source?: string;
+  // A partial first discovery has not yet checked this module's calendar dates.
+  datesPending?: boolean;
 };
 export type Snapshot = {
   activities: Activity[];
@@ -77,7 +79,8 @@ export function activityState(item: Activity, now = Date.now() / 1000) {
     return item.completion === 'pending' ? ('overdue' as const) : ('unverified' as const);
   if (item.opensAt && item.opensAt > now) return 'notOpen' as const;
   const scheduled = scheduleAt(item);
-  if (!scheduled) return 'undated' as const;
+  if (!scheduled)
+    return item.datesPending ? ('unverified' as const) : ('undated' as const);
   if (new Date(scheduled * 1000).toDateString() === new Date(now * 1000).toDateString())
     return 'dueToday' as const;
   return 'available' as const;

@@ -11,11 +11,27 @@ The service is only accessible by authenticated users from Universitas Indonesia
 - **Multi-Account Moodle Synchronization:** Server-side synchronization using configurable Moodle source accounts with isolated session cookies. Supports both student web session emulation and Moodle REST API tokens.
 - **Privacy & Security by Design:** 
   - **Zero credential exposure:** Student credentials and session cookies are never exposed to clients, stored in source control, or logged.
-  - **No private user data stored:** Only general course metadata, activity descriptions, and deadlines are cached. No grades, personal submissions, roster lists, or quiz answers are ever accessed or stored.
+  - **Scoped personal data:** Shared activity definitions and deadlines are kept separate from each user's enrolled courses, completion status, and late-submission flag. Credentials and Moodle cookies are not persisted in the cache; grades, quiz answers, and rosters are not cached.
   - **Opaque Activity IDs:** External links and activity references use server-keyed HMAC tokens to prevent leaking internal database IDs or upstream source aliases.
-- **Persistent Shared Cache:** Powered by a local SQLite cache (WAL mode). Serves instant responses with a 10-minute stale-while-revalidate background refresh cycle to keep upstream Moodle load minimal.
+- **Persistent Activity Cache:** SQLite (WAL mode) stores shared activity definitions and user-scoped enrollment/completion separately. After confirming enrollment, it serves available dates and personal status while stale data is revalidated in the background.
 - **Visibility-Aware Polling:** Client dashboards automatically pause background polling when tabs are inactive or minimized, conserving client battery and server resources.
 - **Administration Control:** Built-in diagnostics view (`/admin`) for designated administrators to inspect source health and cache status.
+
+## Activity caching
+
+`core/src/tracker/cache.ts` stores the latest known data in SQLite (`CACHE_DB_PATH`, default `./data/cache.sqlite`). The tables serve different purposes:
+
+- `snapshot`: the existing single-row shared/admin feed snapshot, retained for its separate diagnostic/sync path.
+- `activities`: reusable course activity definitions, URLs, and opening/due/closing dates; no personal completion state.
+- `course_sync`: last successful course-page check per course (`updated_at`); also has an `enrich_at` column, though the current personal request path does not use it to schedule refreshes.
+- `user_courses`: each username's enrolled course IDs and names. `user_course_sync` records the latest enrollment response and timestamp; the personal request path still verifies enrollment upstream rather than using that record to bypass the check.
+- `user_activity_state`: completion and late-submission evidence keyed by username and activity ID. This must never be shared between students.
+
+On a new Moodle session, `GET /api/activities` verifies that user's enrollment upstream, updates `user_courses`, then joins the enrolled courses with `activities` and that user's `user_activity_state`. If cached activities exist, it returns them with their saved dates and completion immediately after verification, even if a course is stale. If no usable rows exist, it discovers activities from course pages before returning a partial, `preparing` response. A per-session in-memory snapshot avoids repeating this work on every poll; it does not replace the persistent tables.
+
+The response starts background enrichment without waiting for its course, calendar, and activity-page requests. Course pages are checked when `course_sync` is missing or at least 60 minutes old; calendar data is collected across 19 months; activity pages supply personal completion evidence. Course markup must not overwrite previously cached dates or calendar-only activities. Once enrichment settles, updated definitions and user-owned status are persisted. The in-memory personal snapshot triggers another refresh after 60 seconds on a later request, with a 60-second retry delay after an incomplete refresh. Requests are the trigger; this is not a periodic job running without visitors. The old shared/admin `snapshot` has its own 10-minute refresh policy.
+
+During stale-while-revalidate, the last good joined rows remain available rather than reverting dates or completion to unknown. On a cold partial response, dates still being checked are marked pending so the UI says “Checking dates…” rather than “No deadline.” Upstream failures preserve previously cached values where available and set `incomplete`; expired Moodle sessions still require authentication.
 
 ## Getting started
 

@@ -3,6 +3,96 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTracker, FRESH_MS } from '../core/src/tracker/store';
+import { openCache } from '../core/src/tracker/cache';
+
+it('keeps shared activity definitions separate from user enrollment and state across reopen', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tracker-normalized-'));
+  const path = join(directory, 'cache.sqlite');
+  const activity = {
+    id: 'personal-assignment-7',
+    source: 'personal',
+    kind: 'assignment' as const,
+    name: 'Essay',
+    courseId: 9,
+    courseName: 'Original',
+    description: '',
+    url: 'https://scele.cs.ui.ac.id/mod/assign/view.php?id=7',
+    opensAt: null,
+    dueAt: 100,
+    cutoffAt: null,
+    timeLimit: null,
+  };
+  let cache = openCache(path);
+  try {
+    cache.upsertActivities([activity], 1);
+    cache.setUserCourses('alice', [{ id: 9, fullname: 'Alice course' }], 1);
+    cache.setUserCourses('bob', [{ id: 9, fullname: 'Bob course' }], 1);
+    cache.updateUserActivityState(
+      'alice',
+      [{ activityId: activity.id, completion: 'completed' }],
+      1,
+    );
+    cache.setCourseSyncStatus(9, 1, 2);
+    expect(cache.getActivitiesForUser('alice')).toMatchObject([
+      { completion: 'completed', courseName: 'Alice course' },
+    ]);
+    expect(cache.getActivitiesForUser('bob')).toMatchObject([
+      { completion: 'unknown', courseName: 'Bob course' },
+    ]);
+    await Promise.resolve(cache.close());
+    cache = openCache(path);
+    expect(cache.getCourseSyncStatus([9, 10])).toEqual([
+      { courseId: 9, updatedAt: 1, enrichAt: 2 },
+    ]);
+    expect(cache.getActivitiesForUser('alice')[0].name).toBe('Essay');
+    cache.setUserCourses('bob', [], 2);
+    expect(cache.getActivitiesForUser('bob')).toEqual([]);
+    expect(cache.getActivitiesForUser('alice')).toHaveLength(1);
+  } finally {
+    cache.close();
+    await rm(directory, { recursive: true });
+  }
+});
+
+it('keeps calendar-only rows and late-submission evidence during course markup refresh', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tracker-stale-status-'));
+  const cache = openCache(join(directory, 'cache.sqlite'));
+  const activity = {
+    id: 'personal-assignment-88',
+    source: 'personal',
+    kind: 'assignment' as const,
+    name: 'Calendar assignment',
+    courseId: 7,
+    courseName: 'Course',
+    description: '',
+    url: 'https://scele.cs.ui.ac.id/mod/assign/view.php?id=88',
+    opensAt: null,
+    dueAt: 123,
+    cutoffAt: null,
+    timeLimit: null,
+  };
+  try {
+    cache.setUserCourses('alice', [{ id: 7, fullname: 'Course' }], 1);
+    cache.upsertActivities([activity], 1);
+    cache.updateUserActivityState(
+      'alice',
+      [{ activityId: activity.id, completion: 'completed', submittedLate: true }],
+      1,
+    );
+    cache.replaceCourseActivities(7, [], 2);
+    cache.updateUserActivityState(
+      'alice',
+      [{ activityId: activity.id, completion: 'completed' }],
+      2,
+    );
+    expect(cache.getActivitiesForUser('alice')).toMatchObject([
+      { id: activity.id, dueAt: 123, completion: 'completed', submittedLate: true },
+    ]);
+  } finally {
+    cache.close();
+    await rm(directory, { recursive: true });
+  }
+});
 
 it('shares refreshes, idles without readers, retains failures, and persists across restart', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tracker-cache-'));

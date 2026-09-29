@@ -1,6 +1,7 @@
 export type Activity = {
   completion?: 'completed' | 'pending' | 'unknown';
   submittedLate?: boolean;
+  datesPending?: boolean;
   id: string;
   kind: 'assignment' | 'quiz';
   name: string;

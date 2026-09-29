@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ActivityCard } from '../ui/src/components/ActivityCard';
+import { ActivityStatus } from '../ui/src/components/ActivityStatus';
 import { TabularActivityList } from '../ui/src/components/TabularActivityList';
 import AdminPage from '../ui/src/pages/AdminPage';
 import DashboardPage from '../ui/src/pages/DashboardPage';
@@ -30,6 +31,16 @@ const item: Activity = {
 };
 
 describe('activity feed', () => {
+  it('does not label an unchecked deadline as absent', () => {
+    const { rerender } = render(
+      <ActivityStatus item={{ ...item, dueAt: null, datesPending: true }} now={201} />,
+    );
+    expect(screen.getByText('Checking dates…')).toBeTruthy();
+    expect(screen.queryByText('No deadline')).toBeNull();
+    rerender(<ActivityStatus item={{ ...item, dueAt: null }} now={201} />);
+    expect(screen.getByText('No deadline')).toBeTruthy();
+  });
+
   it('separates upcoming, passed, and missing deadlines', () => {
     expect(status(item, 199)).toBe('upcoming');
     expect(status(item, 200)).toBe('past');
