@@ -22,7 +22,7 @@ export interface FreeTimeSlot {
 export interface RoomInfo {
   name: string;
   code: string; // 4 to 6 characters, e.g. "A1.09", "1101"
-  building: 'Gedung Baru' | 'Gedung Lama';
+  building: string;
   isLab: boolean;
   isAuditorium: boolean;
 }
@@ -40,13 +40,14 @@ export const WEEKDAYS: {
   id: WeekdayId;
   label: string;
   englishName: string;
+  indonesianName: string;
   dayIndex: number;
 }[] = [
-  { id: 'senin', label: 'Senin', englishName: 'Monday', dayIndex: 1 },
-  { id: 'selasa', label: 'Selasa', englishName: 'Selasa', dayIndex: 2 },
-  { id: 'rabu', label: 'Rabu', englishName: 'Wednesday', dayIndex: 3 },
-  { id: 'kamis', label: 'Kamis', englishName: 'Thursday', dayIndex: 4 },
-  { id: 'jumat', label: 'Jumat', englishName: 'Friday', dayIndex: 5 },
+  { id: 'senin', label: 'Monday', englishName: 'Monday', indonesianName: 'Senin', dayIndex: 1 },
+  { id: 'selasa', label: 'Tuesday', englishName: 'Tuesday', indonesianName: 'Selasa', dayIndex: 2 },
+  { id: 'rabu', label: 'Wednesday', englishName: 'Wednesday', indonesianName: 'Rabu', dayIndex: 3 },
+  { id: 'kamis', label: 'Thursday', englishName: 'Thursday', indonesianName: 'Kamis', dayIndex: 4 },
+  { id: 'jumat', label: 'Friday', englishName: 'Friday', indonesianName: 'Jumat', dayIndex: 5 },
 ];
 
 /**
@@ -74,8 +75,17 @@ export function extractRoomCode(name: string): string {
  * Parses full room string into structured metadata.
  */
 export function parseRoomInfo(name: string): RoomInfo {
-  const building =
-    name.includes('Gd Lama') || name.includes('Ged Lama') ? 'Gedung Lama' : 'Gedung Baru';
+  let building = 'Gedung Baru';
+  if (/g(d|ed)\.?\s*lama/i.test(name)) {
+    building = 'Gedung Lama';
+  } else if (/g(d|ed)\.?\s*baru/i.test(name)) {
+    building = 'Gedung Baru';
+  } else {
+    const parenMatch = name.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      building = parenMatch[1].trim();
+    }
+  }
   const isLab = name.toLowerCase().includes('lab');
   const isAuditorium = name.toLowerCase().includes('auditorium');
   const code = extractRoomCode(name);
@@ -160,6 +170,66 @@ export function isRoomFreeAtTime(freeSlots: FreeTimeSlot[], timeStr: string): bo
     const eMin = timeStringToMinutes(slot.end);
     return targetMin >= sMin && targetMin < eMin;
   });
+}
+
+/**
+ * Returns current occupancy status of a room given its scheduled classes and time HH:MM.
+ */
+export function getCurrentOccupancy(
+  classes: RawClassSlot[],
+  freeSlots: FreeTimeSlot[],
+  timeStr: string,
+  dayStart = '08:00',
+  dayEnd = '18:00',
+): {
+  isFreeNow: boolean;
+  currentClass?: RawClassSlot;
+  currentFreeSlot?: FreeTimeSlot;
+  nextEvent?: { type: 'class' | 'free'; time: string; name?: string };
+} {
+  const targetMin = timeStringToMinutes(timeStr);
+  const startMin = timeStringToMinutes(dayStart);
+  const endMin = timeStringToMinutes(dayEnd);
+
+  // If outside operating hours
+  if (targetMin < startMin || targetMin >= endMin) {
+    return { isFreeNow: true };
+  }
+
+  // Check if currently occupied by a class
+  const activeClass = classes.find((c) => {
+    const s = timeStringToMinutes(c.start);
+    const e = timeStringToMinutes(c.end);
+    return targetMin >= s && targetMin < e;
+  });
+
+  if (activeClass) {
+    return {
+      isFreeNow: false,
+      currentClass: activeClass,
+      nextEvent: { type: 'free', time: activeClass.end },
+    };
+  }
+
+  // Currently free
+  const activeFreeSlot = freeSlots.find((s) => {
+    const sMin = timeStringToMinutes(s.start);
+    const eMin = timeStringToMinutes(s.end);
+    return targetMin >= sMin && targetMin < eMin;
+  });
+
+  // Find next class today if any
+  const sortedClasses = [...classes]
+    .filter((c) => timeStringToMinutes(c.start) > targetMin)
+    .sort((a, b) => timeStringToMinutes(a.start) - timeStringToMinutes(b.start));
+
+  return {
+    isFreeNow: true,
+    currentFreeSlot: activeFreeSlot,
+    nextEvent: sortedClasses[0]
+      ? { type: 'class', time: sortedClasses[0].start, name: sortedClasses[0].class }
+      : undefined,
+  };
 }
 
 /**

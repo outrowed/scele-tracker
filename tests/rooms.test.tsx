@@ -6,6 +6,7 @@ import {
   calculateFreeSlots,
   computeDayRoomStatuses,
   extractRoomCode,
+  getCurrentOccupancy,
   getWeekdayIdFromDate,
   minutesToTimeString,
   parseRoomInfo,
@@ -110,6 +111,37 @@ describe('Room schedule helper utilities', () => {
     expect(lab?.isCompletelyFree).toBe(true);
     expect(lab?.classes).toHaveLength(0);
   });
+
+  it('determines current occupancy correctly', () => {
+    const classes: RawClassSlot[] = [
+      { start: '10:00', end: '11:40', class: 'Sistem Operasi B' },
+      { start: '14:00', end: '15:40', class: 'Jarkom' },
+    ];
+    const freeSlots = calculateFreeSlots(classes, '08:00', '18:00');
+
+    // At 09:00: free now, next event is OS at 10:00
+    const occ9 = getCurrentOccupancy(classes, freeSlots, '09:00');
+    expect(occ9.isFreeNow).toBe(true);
+    expect(occ9.nextEvent?.type).toBe('class');
+    expect(occ9.nextEvent?.time).toBe('10:00');
+
+    // At 10:30: busy with OS, next event free at 11:40
+    const occ1030 = getCurrentOccupancy(classes, freeSlots, '10:30');
+    expect(occ1030.isFreeNow).toBe(false);
+    expect(occ1030.currentClass?.class).toBe('Sistem Operasi B');
+    expect(occ1030.nextEvent?.type).toBe('free');
+    expect(occ1030.nextEvent?.time).toBe('11:40');
+
+    // At 12:00: free now, next event is Jarkom at 14:00
+    const occ12 = getCurrentOccupancy(classes, freeSlots, '12:00');
+    expect(occ12.isFreeNow).toBe(true);
+    expect(occ12.nextEvent?.time).toBe('14:00');
+
+    // At 16:00: free now, no more classes today
+    const occ16 = getCurrentOccupancy(classes, freeSlots, '16:00');
+    expect(occ16.isFreeNow).toBe(true);
+    expect(occ16.nextEvent).toBeUndefined();
+  });
 });
 
 describe('FreeRoomsPage component', () => {
@@ -142,16 +174,12 @@ describe('FreeRoomsPage component', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Free Rooms · Ruang Kosong/i)).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /Backrooms/i })).toBeTruthy();
     expect(await screen.findByText('A1.09')).toBeTruthy();
-    expect(screen.getByText('A1.09 (Ged Baru)')).toBeTruthy();
+    expect(screen.getByText('Gedung Baru')).toBeTruthy();
 
-    // Verify weekly view controls
-    expect(screen.getByText('Weekly View')).toBeTruthy();
-    expect(screen.getByText('Monthly View')).toBeTruthy();
-
-    // Switch to monthly view
-    fireEvent.click(screen.getByRole('button', { name: /monthly view/i }));
-    expect(await screen.findByText(/Room Availability for/i)).toBeTruthy();
+    // Verify weekday tabs are rendered
+    expect(screen.getByRole('tab', { name: /Monday/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Tuesday/i })).toBeTruthy();
   });
 });

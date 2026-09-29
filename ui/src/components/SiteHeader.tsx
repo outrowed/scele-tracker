@@ -119,12 +119,17 @@ export function SiteHeader() {
                   to="/rooms"
                   aria-current={isRoomsActive ? 'page' : undefined}
                   className={desktopNavLinkClass(isRoomsActive)}
+                  title="Backrooms"
                 >
                   <DoorOpen
                     size={16}
-                    className={isRoomsActive ? 'text-teal-700' : 'text-slate-400'}
+                    className={
+                      isRoomsActive
+                        ? 'text-teal-700 dark:text-teal-300'
+                        : 'text-slate-400 dark:text-slate-400'
+                    }
                   />
-                  <span>Free Rooms</span>
+                  <span>Backrooms</span>
                 </Link>
 
                 {user.role === 'admin' && (
@@ -263,9 +268,13 @@ export function SiteHeader() {
             >
               <DoorOpen
                 size={18}
-                className={isRoomsActive ? 'text-teal-700' : 'text-slate-400'}
+                className={
+                  isRoomsActive
+                    ? 'text-teal-700 dark:text-teal-300'
+                    : 'text-slate-400 dark:text-slate-400'
+                }
               />
-              Free Rooms
+              Backrooms
             </Link>
             {user.role === 'admin' && (
               <Link

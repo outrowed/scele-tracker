@@ -1,42 +1,66 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Building2,
-  Calendar as CalendarIcon,
-  CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock,
-  DoorOpen,
-  Filter,
-  Layers3,
+  Ghost,
+  Info,
   Loader2,
   RefreshCw,
   Search,
-  Sparkles,
-  XCircle,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import { Container } from '../components/Container';
 import { Button } from '../components/Button';
 import { MessageBox } from '../components/MessageBox';
 import { PageHeader, SectionTitle } from '../components/Typography';
-import { monthDays, shiftMonth } from '../calendar';
 import {
-  calculateFreeSlots,
   computeDayRoomStatuses,
-  extractRoomCode,
+  getCurrentOccupancy,
   getWeekdayIdFromDate,
-  parseRoomInfo,
   WEEKDAYS,
   type AllDaysScheduleResponse,
   type DayScheduleMap,
-  type RoomDayStatus,
   type WeekdayId,
 } from '../rooms';
+
+/**
+ * Returns current local time in HH:MM format using Asia/Jakarta (WIB) timezone.
+ */
+function getJakartaTime(): { timeString: string; weekdayId: WeekdayId | null; isWeekend: boolean } {
+  const now = new Date();
+  const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const timeString = timeFormatter.format(now);
+
+  const dayFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'short',
+  });
+  const dayName = dayFormatter.format(now).toLowerCase();
+  let weekdayId: WeekdayId | null = null;
+  if (dayName.startsWith('mon')) weekdayId = 'senin';
+  else if (dayName.startsWith('tue')) weekdayId = 'selasa';
+  else if (dayName.startsWith('wed')) weekdayId = 'rabu';
+  else if (dayName.startsWith('thu')) weekdayId = 'kamis';
+  else if (dayName.startsWith('fri')) weekdayId = 'jumat';
+
+  return {
+    timeString,
+    weekdayId,
+    isWeekend: weekdayId === null,
+  };
+}
 
 export default function FreeRoomsPage() {
   const [data, setData] = useState<AllDaysScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly');
 
   // Filter states
   const [selectedDay, setSelectedDay] = useState<WeekdayId>(() => {
@@ -44,22 +68,24 @@ export default function FreeRoomsPage() {
     const wk = getWeekdayIdFromDate(today);
     return wk || 'senin';
   });
-  const [buildingFilter, setBuildingFilter] = useState<
-    'all' | 'Gedung Baru' | 'Gedung Lama'
-  >('all');
-  const [typeFilter, setTypeFilter] = useState<
-    'all' | 'classroom' | 'lab' | 'auditorium'
-  >('all');
-  const [freeOnly, setFreeOnly] = useState(false);
+  const [buildingFilter, setBuildingFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'classroom' | 'lab' | 'auditorium'>('all');
+  const [freeFilter, setFreeFilter] = useState<'all' | 'free-now' | 'free-all-day'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
-  // Monthly calendar state
-  const [currentMonth, setCurrentMonth] = useState(() =>
-    new Date().toISOString().slice(0, 7),
-  );
-  const [selectedDate, setSelectedDate] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
+  // Active hover popover for room full name
+  const [hoveredRoomName, setHoveredRoomName] = useState<string | null>(null);
+
+  // Live Jakarta clock (internal calculation for vacancy)
+  const [currentTime, setCurrentTime] = useState(getJakartaTime);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getJakartaTime());
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function loadSchedule() {
     setLoading(true);
@@ -83,7 +109,7 @@ export default function FreeRoomsPage() {
   }, []);
 
   // Extract all unique room names across all days
-  const allRoomNames: string[] = (() => {
+  const allRoomNames: string[] = useMemo(() => {
     if (!data?.schedule) return [];
     const set = new Set<string>();
     for (const dayKey of Object.keys(data.schedule) as WeekdayId[]) {
@@ -93,46 +119,81 @@ export default function FreeRoomsPage() {
       }
     }
     return Array.from(set).sort();
-  })();
+  }, [data]);
 
   // Active day's schedule
   const activeDaySchedule: DayScheduleMap = data?.schedule?.[selectedDay] || {};
-  const roomStatuses = computeDayRoomStatuses(allRoomNames, activeDaySchedule);
+  const roomStatuses = useMemo(
+    () => computeDayRoomStatuses(allRoomNames, activeDaySchedule),
+    [allRoomNames, activeDaySchedule],
+  );
+
+  // Dynamic set of all buildings discovered in room data
+  const dynamicBuildings = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of roomStatuses) {
+      if (item.room.building) set.add(item.room.building);
+    }
+    return Array.from(set).sort();
+  }, [roomStatuses]);
+
+  // Is viewing today's day schedule?
+  const isViewingToday = currentTime.weekdayId === selectedDay && !currentTime.isWeekend;
 
   // Apply filters to room statuses
-  const filteredStatuses = roomStatuses.filter((item) => {
-    if (buildingFilter !== 'all' && item.room.building !== buildingFilter) return false;
-    if (typeFilter === 'lab' && !item.room.isLab) return false;
-    if (typeFilter === 'auditorium' && !item.room.isAuditorium) return false;
-    if (typeFilter === 'classroom' && (item.room.isLab || item.room.isAuditorium))
-      return false;
-    if (freeOnly && !item.isCompletelyFree && item.freeSlots.length === 0) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchName = item.room.name.toLowerCase().includes(q);
-      const matchCode = item.room.code.toLowerCase().includes(q);
-      if (!matchName && !matchCode) return false;
-    }
-    return true;
-  });
+  const filteredStatuses = useMemo(() => {
+    return roomStatuses.filter((item) => {
+      if (buildingFilter !== 'all' && item.room.building !== buildingFilter) return false;
+      if (typeFilter === 'lab' && !item.room.isLab) return false;
+      if (typeFilter === 'auditorium' && !item.room.isAuditorium) return false;
+      if (typeFilter === 'classroom' && (item.room.isLab || item.room.isAuditorium))
+        return false;
 
-  // Calculate monthly stats for the calendar days
-  const calendarDaysList = monthDays(currentMonth);
-  const selectedDateObj = new Date(`${selectedDate}T00:00:00Z`);
-  const selectedDateWeekday = getWeekdayIdFromDate(
-    new Date(
-      Number(selectedDate.slice(0, 4)),
-      Number(selectedDate.slice(5, 7)) - 1,
-      Number(selectedDate.slice(8, 10)),
-    ),
-  );
+      if (freeFilter === 'free-all-day') {
+        if (!item.isCompletelyFree) return false;
+      } else if (freeFilter === 'free-now') {
+        if (isViewingToday) {
+          const occ = getCurrentOccupancy(item.classes, item.freeSlots, currentTime.timeString);
+          if (!occ.isFreeNow) return false;
+        } else {
+          if (!item.isCompletelyFree && item.freeSlots.length === 0) return false;
+        }
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = item.room.name.toLowerCase().includes(q);
+        const matchCode = item.room.code.toLowerCase().includes(q);
+        const matchBuilding = item.room.building.toLowerCase().includes(q);
+        if (!matchName && !matchCode && !matchBuilding) return false;
+      }
+      return true;
+    });
+  }, [roomStatuses, buildingFilter, typeFilter, freeFilter, searchQuery, isViewingToday, currentTime.timeString]);
+
+  // Active filters count
+  const activeFilterCount =
+    (buildingFilter !== 'all' ? 1 : 0) +
+    (typeFilter !== 'all' ? 1 : 0) +
+    (freeFilter !== 'all' ? 1 : 0);
+
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(searchQuery.trim());
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setBuildingFilter('all');
+    setTypeFilter('all');
+    setFreeFilter('all');
+  };
+
+  const selectedDayInfo = WEEKDAYS.find((d) => d.id === selectedDay);
 
   return (
     <Container as="main" className="py-10 md:py-14">
       {/* Header */}
       <PageHeader
-        title="Free Rooms · Ruang Kosong"
-        description="Find vacant classrooms and labs in Fasilkom UI for group study, self-study, or events without course activities."
+        title="Backrooms"
+        description="Find vacant classrooms, study spaces, and labs across Fasilkom UI. Check live vacancy right now or plan ahead for group discussions and solo study."
         action={
           <Button
             variant="secondary"
@@ -153,110 +214,224 @@ export default function FreeRoomsPage() {
         </MessageBox>
       )}
 
-      {/* View Switcher: Weekly vs Monthly */}
-      <div className="my-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-700">View mode:</span>
-          <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/80">
+      {/* Unified Search and Filters Toolbar (sitting directly on page background) */}
+      <div className="my-6 space-y-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Search bar matching activity filters styling */}
+          <label className="flex h-11 flex-1 items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 text-slate-400 dark:text-slate-500 shadow-xs transition focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500">
+            <Search size={17} className="shrink-0" />
+            <input
+              aria-label="Search rooms"
+              placeholder="Search by room code, building, or class…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-full w-full min-w-0 bg-transparent text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none"
+            />
+            {Boolean(searchQuery) && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearchQuery('')}
+                className="rounded p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </label>
+
+          {/* Filters Toggle Button */}
+          <button
+            type="button"
+            aria-expanded={filterPanelOpen}
+            aria-controls="room-filter-panel"
+            onClick={() => setFilterPanelOpen(!filterPanelOpen)}
+            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-xs transition cursor-pointer select-none ${
+              filterPanelOpen || activeFilterCount > 0
+                ? 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-600'
+            }`}
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-teal-700 dark:bg-teal-600 px-1.5 py-0.5 text-[11px] font-bold text-white leading-none">
+                {activeFilterCount}
+              </span>
+            )}
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className={`transition-transform duration-150 ${filterPanelOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* Expandable Multi-Facet Filter Panel Card */}
+        {filterPanelOpen && (
+          <div
+            id="room-filter-panel"
+            className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-xs"
+          >
+            <div className="grid gap-5 sm:grid-cols-3">
+              {/* Building filter */}
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Building
+                </legend>
+                <div className="space-y-1">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                    <input
+                      type="radio"
+                      name="buildingFilter"
+                      checked={buildingFilter === 'all'}
+                      onChange={() => setBuildingFilter('all')}
+                      className="h-4 w-4 border-slate-300 dark:border-slate-600 accent-teal-700 cursor-pointer"
+                    />
+                    <span>All Buildings</span>
+                  </label>
+                  {dynamicBuildings.map((b) => (
+                    <label
+                      key={b}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                    >
+                      <input
+                        type="radio"
+                        name="buildingFilter"
+                        checked={buildingFilter === b}
+                        onChange={() => setBuildingFilter(b)}
+                        className="h-4 w-4 border-slate-300 dark:border-slate-600 accent-teal-700 cursor-pointer"
+                      />
+                      <span>{b}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* Room type filter */}
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Room Type
+                </legend>
+                <div className="space-y-1">
+                  {[
+                    { id: 'all', label: 'All Room Types' },
+                    { id: 'classroom', label: 'Classrooms only' },
+                    { id: 'lab', label: 'Labs only' },
+                    { id: 'auditorium', label: 'Auditoriums only' },
+                  ].map((t) => (
+                    <label
+                      key={t.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                    >
+                      <input
+                        type="radio"
+                        name="typeFilter"
+                        checked={typeFilter === t.id}
+                        onChange={() => setTypeFilter(t.id as any)}
+                        className="h-4 w-4 border-slate-300 dark:border-slate-600 accent-teal-700 cursor-pointer"
+                      />
+                      <span>{t.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* Availability filter */}
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Availability
+                </legend>
+                <div className="space-y-1">
+                  {[
+                    { id: 'all', label: 'All Rooms' },
+                    { id: 'free-now', label: 'Free Now (vacant)' },
+                    { id: 'free-all-day', label: 'Free All Day (no classes)' },
+                  ].map((a) => (
+                    <label
+                      key={a.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                    >
+                      <input
+                        type="radio"
+                        name="availabilityFilter"
+                        checked={freeFilter === a.id}
+                        onChange={() => setFreeFilter(a.id as any)}
+                        className="h-4 w-4 border-slate-300 dark:border-slate-600 accent-teal-700 cursor-pointer"
+                      />
+                      <span>{a.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          </div>
+        )}
+
+        {/* Active Filter Pills Tray */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 mr-0.5">
+              Active:
+            </span>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-2.5 py-1 text-xs font-medium text-teal-900 dark:text-teal-100 hover:bg-teal-100 dark:hover:bg-teal-900 transition cursor-pointer"
+              >
+                <span className="truncate">Search: {searchQuery}</span>
+                <X size={12} className="shrink-0" />
+              </button>
+            )}
+            {buildingFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setBuildingFilter('all')}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-2.5 py-1 text-xs font-medium text-teal-900 dark:text-teal-100 hover:bg-teal-100 dark:hover:bg-teal-900 transition cursor-pointer"
+              >
+                <span>Building: {buildingFilter}</span>
+                <X size={12} className="shrink-0" />
+              </button>
+            )}
+            {typeFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-2.5 py-1 text-xs font-medium text-teal-900 dark:text-teal-100 hover:bg-teal-100 dark:hover:bg-teal-900 transition cursor-pointer"
+              >
+                <span className="capitalize">Type: {typeFilter}</span>
+                <X size={12} className="shrink-0" />
+              </button>
+            )}
+            {freeFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setFreeFilter('all')}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-2.5 py-1 text-xs font-medium text-teal-900 dark:text-teal-100 hover:bg-teal-100 dark:hover:bg-teal-900 transition cursor-pointer"
+              >
+                <span>{freeFilter === 'free-now' ? 'Free Now' : 'Free All Day'}</span>
+                <X size={12} className="shrink-0" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setViewMode('weekly')}
-              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
-                viewMode === 'weekly'
-                  ? 'bg-white text-teal-800 shadow-xs border border-slate-200/60'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              onClick={clearAllFilters}
+              className="text-xs font-medium text-slate-500 dark:text-slate-400 underline hover:text-slate-800 dark:hover:text-slate-100 transition cursor-pointer ml-1"
             >
-              <CalendarDays size={15} />
-              Weekly View
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('monthly')}
-              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
-                viewMode === 'monthly'
-                  ? 'bg-white text-teal-800 shadow-xs border border-slate-200/60'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <CalendarIcon size={15} />
-              Monthly View
+              Clear all
             </button>
           </div>
-        </div>
-
-        {/* Global Summary Badge */}
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Building2 size={15} className="text-slate-400" />
-          <span>{allRoomNames.length} Fasilkom rooms tracked</span>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-        {/* Search */}
-        <div className="relative min-w-[200px] flex-1">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <input
-            type="text"
-            placeholder="Search by room name or code (e.g. A1.09, 1101)…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-1.5 pl-9 pr-3 text-xs font-medium text-slate-800 placeholder-slate-400 transition focus:border-teal-500 focus:bg-white focus:outline-none"
-          />
-        </div>
-
-        {/* Building Filter */}
-        <select
-          value={buildingFilter}
-          onChange={(e) => setBuildingFilter(e.target.value as any)}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition focus:border-teal-500 focus:outline-none"
-          aria-label="Filter by building"
-        >
-          <option value="all">All Buildings</option>
-          <option value="Gedung Baru">Gedung Baru</option>
-          <option value="Gedung Lama">Gedung Lama</option>
-        </select>
-
-        {/* Type Filter */}
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as any)}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition focus:border-teal-500 focus:outline-none"
-          aria-label="Filter by room type"
-        >
-          <option value="all">All Room Types</option>
-          <option value="classroom">Classrooms only</option>
-          <option value="lab">Labs only</option>
-          <option value="auditorium">Auditoriums only</option>
-        </select>
-
-        {/* Only completely free rooms */}
-        <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
-          <input
-            type="checkbox"
-            checked={freeOnly}
-            onChange={(e) => setFreeOnly(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-          />
-          <span>Free all day only</span>
-        </label>
+        )}
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-slate-500">
-          <Loader2 size={32} className="mx-auto mb-3 animate-spin text-teal-600" />
-          <p className="text-sm font-medium">Loading room schedules from CS UI API…</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 py-16 text-center text-slate-500 dark:text-slate-400">
+          <Loader2 size={32} className="mx-auto mb-3 animate-spin text-teal-600 dark:text-teal-400" />
+          <p className="text-sm font-medium">Loading room schedules from Fasilkom API…</p>
         </div>
-      ) : viewMode === 'weekly' ? (
-        /* ========================================================================= */
-        /* WEEKLY VIEW                                                               */
-        /* ========================================================================= */
+      ) : (
         <div className="flex flex-col gap-6">
-          {/* Weekday Selector Tabs */}
+          {/* Weekday Selector Tabs (English primary, Indonesian subtitle) */}
           <div
             className="flex flex-wrap gap-2"
             role="tablist"
@@ -264,6 +439,7 @@ export default function FreeRoomsPage() {
           >
             {WEEKDAYS.map((day) => {
               const isActive = selectedDay === day.id;
+              const isToday = currentTime.weekdayId === day.id;
               const countScheduled = Object.keys(data?.schedule?.[day.id] || {}).length;
               const freeCount = allRoomNames.length - countScheduled;
 
@@ -273,19 +449,27 @@ export default function FreeRoomsPage() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setSelectedDay(day.id)}
-                  className={`flex flex-1 min-w-[120px] flex-col items-center justify-between rounded-xl border p-3 text-center transition ${
+                  className={`flex flex-1 min-w-[120px] flex-col items-center justify-between rounded-xl border p-3 text-center transition cursor-pointer ${
                     isActive
-                      ? 'border-teal-600 bg-teal-50/80 ring-2 ring-teal-600 ring-offset-1 text-teal-900 shadow-xs'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-slate-50'
+                      ? 'border-teal-600 dark:border-teal-500 bg-teal-50/80 dark:bg-teal-950/80 ring-2 ring-teal-600 dark:ring-teal-400 ring-offset-1 dark:ring-offset-slate-900 text-teal-950 dark:text-teal-100 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <span className="text-sm font-bold">{day.label}</span>
-                  <span className="text-[11px] text-slate-500">{day.englishName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold">{day.label}</span>
+                    {isToday && (
+                      <span className="rounded-full bg-teal-700 text-white dark:bg-teal-600 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  {/* Indonesian subtitle */}
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">{day.indonesianName}</span>
                   <span
                     className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       freeCount > 0
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-100 text-slate-600'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200/50 dark:border-emerald-800/50'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                     }`}
                   >
                     {freeCount} free all day
@@ -295,340 +479,260 @@ export default function FreeRoomsPage() {
             })}
           </div>
 
-          {/* Weekly Schedule Grid for Selected Day */}
+          {/* Schedule Header */}
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <SectionTitle>
-                Rooms Schedule for {WEEKDAYS.find((d) => d.id === selectedDay)?.label}{' '}
-                (08:00 – 18:00)
-              </SectionTitle>
-              <span className="text-xs text-slate-500">
+              <div className="flex items-center gap-2">
+                <SectionTitle className="mb-0">
+                  Room Schedule for {selectedDayInfo?.label}{' '}
+                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                    ({selectedDayInfo?.indonesianName})
+                  </span>{' '}
+                  <span className="font-normal text-slate-400 dark:text-slate-500 text-sm">(08:00 – 18:00)</span>
+                </SectionTitle>
+              </div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Showing {filteredStatuses.length} of {allRoomNames.length} rooms
               </span>
             </div>
 
             {/* Room cards grid */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredStatuses.map(({ room, classes, freeSlots, isCompletelyFree }) => (
-                <div
-                  key={room.name}
-                  className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-slate-300"
-                >
-                  <div>
-                    {/* Header: Room Code Indicator and Title */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        {/* Prominent short room code indicator */}
-                        <span
-                          className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-mono font-bold tracking-wider ${
-                            isCompletelyFree
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-teal-50 text-teal-800 border border-teal-200'
-                          }`}
-                          title={`Room code: ${room.code}`}
-                        >
-                          {room.code}
-                        </span>
-                        <div>
-                          <h4 className="text-sm font-semibold text-slate-900 leading-tight">
-                            {room.name}
-                          </h4>
-                          <span className="text-[11px] text-slate-500">
-                            {room.building}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Room tag badge */}
-                      {room.isLab ? (
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-200/60">
-                          Lab
-                        </span>
-                      ) : room.isAuditorium ? (
-                        <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-200/60">
-                          Auditorium
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                          Classroom
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Status overview */}
-                    <div className="mt-3.5">
-                      {isCompletelyFree ? (
-                        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 border border-emerald-200/70">
-                          <CheckCircle2 size={15} className="text-emerald-600" />
-                          <span>Free all day! (No matkul)</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                            <span className="flex items-center gap-1.5">
-                              <Clock size={13} className="text-teal-700" />
-                              Vacant time slots:
-                            </span>
-                            <span className="font-semibold text-emerald-700">
-                              {freeSlots.length} free slot
-                              {freeSlots.length > 1 ? 's' : ''}
-                            </span>
-                          </div>
-
-                          {/* Free slots pills */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {freeSlots.map((slot, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-200/70"
-                              >
-                                {slot.start} – {slot.end} ({slot.durationMinutes}m)
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Scheduled classes list footer if any */}
-                  {classes.length > 0 && (
-                    <div className="mt-4 border-t border-slate-100 pt-3">
-                      <details className="text-xs group">
-                        <summary className="cursor-pointer font-medium text-slate-500 hover:text-slate-800 transition flex items-center justify-between">
-                          <span>
-                            {classes.length} scheduled class
-                            {classes.length > 1 ? 'es' : ''}
-                          </span>
-                          <span className="text-[10px] text-teal-700 group-open:rotate-180 transition-transform">
-                            ▼
-                          </span>
-                        </summary>
-                        <div className="mt-2 flex flex-col gap-1.5 pl-1 text-[11px] text-slate-600">
-                          {classes.map((c, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between border-b border-slate-50 pb-1"
-                            >
-                              <span
-                                className="font-medium text-slate-800 truncate max-w-[180px]"
-                                title={c.class}
-                              >
-                                {c.class}
-                              </span>
-                              <span className="font-mono text-slate-500 whitespace-nowrap">
-                                {c.start} – {c.end}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ========================================================================= */
-        /* MONTHLY VIEW                                                              */
-        /* ========================================================================= */
-        <div className="flex flex-col gap-6">
-          {/* Month navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Button
-                aria-label="Previous month"
-                variant="secondary"
-                onClick={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
-              >
-                ←
-              </Button>
-              <h3 className="text-lg font-bold text-slate-800">
-                {new Intl.DateTimeFormat('en-GB', {
-                  month: 'long',
-                  year: 'numeric',
-                  timeZone: 'UTC',
-                }).format(new Date(`${currentMonth}-01T00:00:00Z`))}
-              </h3>
-              <Button
-                aria-label="Next month"
-                variant="secondary"
-                onClick={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
-              >
-                →
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const nowStr = new Date().toISOString().slice(0, 7);
-                  setCurrentMonth(nowStr);
-                  setSelectedDate(new Date().toISOString().slice(0, 10));
-                }}
-              >
-                Current Month
-              </Button>
-            </div>
-            <span className="text-xs text-slate-500">
-              Select any weekday in the calendar to view its room availability breakdown.
-            </span>
-          </div>
-
-          {/* Monthly calendar grid */}
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs md:p-6">
-            <div className="grid grid-cols-7 gap-1 text-center sm:gap-2">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                <div
-                  key={day}
-                  className="py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider"
-                >
-                  {day}
-                </div>
-              ))}
-
-              {calendarDaysList.map((dayStr) => {
-                const isSelected = selectedDate === dayStr;
-                const isCurrentMonth = dayStr.startsWith(currentMonth);
-                const isToday = dayStr === new Date().toISOString().slice(0, 10);
-
-                const d = new Date(
-                  Number(dayStr.slice(0, 4)),
-                  Number(dayStr.slice(5, 7)) - 1,
-                  Number(dayStr.slice(8, 10)),
-                );
-                const wk = getWeekdayIdFromDate(d);
-                const isWeekend = wk === null;
-
-                const daySchedule = wk && data?.schedule?.[wk] ? data.schedule[wk] : {};
-                const busyRoomCount = Object.keys(daySchedule).length;
-                const freeAllDayCount = isWeekend
-                  ? allRoomNames.length
-                  : allRoomNames.length - busyRoomCount;
-
-                return (
-                  <button
-                    type="button"
-                    key={dayStr}
-                    onClick={() => {
-                      setSelectedDate(dayStr);
-                      if (wk) setSelectedDay(wk);
-                    }}
-                    className={`flex min-h-[76px] flex-col justify-between rounded-xl border p-2 text-left transition ${
-                      isSelected
-                        ? 'border-teal-600 bg-teal-50/80 ring-2 ring-teal-600 ring-offset-1'
-                        : isToday
-                          ? 'border-teal-300 bg-teal-50/30 hover:border-teal-400'
-                          : isCurrentMonth
-                            ? 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                            : 'border-slate-100/50 bg-slate-50/40 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                          isToday ? 'bg-teal-700 text-white' : 'text-slate-700'
-                        }`}
-                      >
-                        {Number(dayStr.slice(8, 10))}
-                      </span>
-                      {isToday && (
-                        <span className="text-[9px] font-bold uppercase text-teal-700">
-                          Today
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-1">
-                      {isWeekend ? (
-                        <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-medium text-slate-500">
-                          Weekend
-                        </span>
-                      ) : (
-                        <span className="rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200/50">
-                          {freeAllDayCount} free
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Selected day rooms detail */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div>
-                <h4 className="text-base font-bold text-slate-900">
-                  Room Availability for {selectedDate} (
-                  {selectedDateWeekday
-                    ? WEEKDAYS.find((w) => w.id === selectedDateWeekday)?.label
-                    : 'Weekend'}
-                  )
-                </h4>
-                <p className="text-xs text-slate-500">
-                  {selectedDateWeekday
-                    ? `Displaying Fasilkom lecture rooms and labs for ${WEEKDAYS.find((w) => w.id === selectedDateWeekday)?.label}.`
-                    : 'Weekend: No academic courses scheduled. Rooms are typically free or accessible by faculty reservation.'}
+            {filteredStatuses.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
+                <Ghost size={36} className="mx-auto mb-3 text-slate-400 dark:text-slate-500 opacity-60" />
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">No rooms match your filter criteria</h4>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Try clearing the search query or adjusting your building and availability filters.
                 </p>
+                <Button variant="secondary" className="mt-4" onClick={clearAllFilters}>
+                  Reset all filters
+                </Button>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredStatuses.map(({ room, classes, freeSlots, isCompletelyFree }) => {
+                  const occupancy = isViewingToday
+                    ? getCurrentOccupancy(classes, freeSlots, currentTime.timeString)
+                    : null;
 
-            {selectedDateWeekday ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {filteredStatuses.map(({ room, freeSlots, isCompletelyFree }) => (
-                  <div
-                    key={room.name}
-                    className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-xs"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                        {room.code}
-                      </span>
-                      <span
-                        className="text-[10px] text-slate-500 truncate max-w-[120px]"
-                        title={room.name}
-                      >
-                        {room.name}
-                      </span>
-                    </div>
+                  const isPopoverOpen = hoveredRoomName === room.name;
 
-                    <div className="mt-2.5">
-                      {isCompletelyFree ? (
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
-                          <CheckCircle2 size={13} /> Free all day
-                        </span>
-                      ) : (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-medium text-slate-600">
-                            {freeSlots.length} open slot{freeSlots.length > 1 ? 's' : ''}:
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {freeSlots.slice(0, 2).map((s, i) => (
-                              <span
-                                key={i}
-                                className="rounded bg-emerald-100/70 px-1 py-0.5 text-[10px] font-mono text-emerald-800"
+                  return (
+                    <div
+                      key={room.name}
+                      className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs transition hover:border-slate-300 dark:hover:border-slate-600"
+                    >
+                      <div>
+                        {/* Header: Room Code, Pop-up Trigger, Building Name, Room Type (all on one single row) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Prominent Room Code */}
+                            <span
+                              className={`inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-mono font-bold tracking-wider shrink-0 ${
+                                isCompletelyFree
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                                  : 'bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800'
+                              }`}
+                            >
+                              {room.code}
+                            </span>
+
+                            {/* Trigger for Room Full Name Pop-up */}
+                            <div className="relative inline-block shrink-0">
+                              <button
+                                type="button"
+                                onMouseEnter={() => setHoveredRoomName(room.name)}
+                                onMouseLeave={() => setHoveredRoomName(null)}
+                                onClick={() =>
+                                  setHoveredRoomName(hoveredRoomName === room.name ? null : room.name)
+                                }
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+                                aria-label={`View full details for room ${room.code}`}
+                                title="Hover to view full room name"
                               >
-                                {s.start}-{s.end}
+                                <Info size={14} />
+                              </button>
+
+                              {/* Pop-up Menu / Tooltip for full room name */}
+                              {isPopoverOpen && (
+                                <div
+                                  onMouseEnter={() => setHoveredRoomName(room.name)}
+                                  onMouseLeave={() => setHoveredRoomName(null)}
+                                  className="absolute left-0 bottom-full z-30 mb-2 w-max max-w-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-left shadow-xl"
+                                >
+                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug break-words">
+                                    {room.name}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Secondary Building info beside code */}
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                              {room.building}
+                            </span>
+                          </div>
+
+                          {/* Room Type Pill with truncate to never overflow */}
+                          <div className="shrink-0">
+                            {room.isLab ? (
+                              <span
+                                className="block max-w-[85px] sm:max-w-[100px] truncate rounded-full bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-center text-[10px] font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60"
+                                title="Laboratory"
+                              >
+                                Lab
                               </span>
-                            ))}
-                            {freeSlots.length > 2 && (
-                              <span className="text-[10px] text-slate-400">
-                                +{freeSlots.length - 2} more
+                            ) : room.isAuditorium ? (
+                              <span
+                                className="block max-w-[85px] sm:max-w-[100px] truncate rounded-full bg-purple-50 dark:bg-purple-950 px-2 py-0.5 text-center text-[10px] font-semibold text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60"
+                                title="Auditorium"
+                              >
+                                Auditorium
+                              </span>
+                            ) : (
+                              <span
+                                className="block max-w-[85px] sm:max-w-[100px] truncate rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-300"
+                                title="Classroom"
+                              >
+                                Classroom
                               </span>
                             )}
                           </div>
                         </div>
+
+                        {/* Live Occupancy Status Strip (if viewing today) */}
+                        {occupancy && (
+                          <div className="mt-3">
+                            {occupancy.isFreeNow ? (
+                              <div className="flex items-center justify-between rounded-lg bg-emerald-50/90 dark:bg-emerald-950/80 px-2.5 py-1.5 text-xs text-emerald-900 dark:text-emerald-100 border border-emerald-200 dark:border-emerald-800">
+                                <span className="flex items-center gap-1.5 font-semibold shrink-0">
+                                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                  Vacant right now
+                                </span>
+                                {isCompletelyFree ? (
+                                  <span
+                                    className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium truncate ml-2"
+                                    title="Completely vacant (no classes scheduled today)"
+                                  >
+                                    Completely vacant
+                                  </span>
+                                ) : occupancy.nextEvent ? (
+                                  <span
+                                    className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate ml-2"
+                                    title={
+                                      occupancy.nextEvent.time >= '16:00'
+                                        ? `Vacant for day only (night schedule at ${occupancy.nextEvent.time})`
+                                        : `Class at ${occupancy.nextEvent.time}`
+                                    }
+                                  >
+                                    {occupancy.nextEvent.time >= '16:00'
+                                      ? `Vacant for day only (night schedule at ${occupancy.nextEvent.time})`
+                                      : `Class at ${occupancy.nextEvent.time}`}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate ml-2">
+                                    Free rest of day
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between rounded-lg bg-rose-50/90 dark:bg-rose-950/80 px-2.5 py-1.5 text-xs text-rose-900 dark:text-rose-100 border border-rose-200 dark:border-rose-800">
+                                <span
+                                  className="flex items-center gap-1.5 font-semibold truncate max-w-[170px]"
+                                  title={occupancy.currentClass?.class}
+                                >
+                                  <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                  Occupied: {occupancy.currentClass?.class}
+                                </span>
+                                <span className="text-[11px] text-rose-700 dark:text-rose-300 whitespace-nowrap">
+                                  Free at {occupancy.nextEvent?.time}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Body: if completely free, fill the rest of the space below and center VACANT */}
+                      {isCompletelyFree ? (
+                        <div className="flex flex-1 items-center justify-center min-h-[100px] py-6">
+                          <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 dark:text-teal-200/20 uppercase select-none">
+                            VACANT
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-1 flex-col justify-between">
+                          {/* Vacancy slots overview */}
+                          <div className="mt-3.5">
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock size={13} className="text-teal-700 dark:text-teal-400" />
+                                  Vacant time slots:
+                                </span>
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                  {freeSlots.length} free slot{freeSlots.length > 1 ? 's' : ''}
+                                </span>
+                              </div>
+
+                              {/* Free slots table-like rows */}
+                              <div className="flex flex-col gap-1.5 pl-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                {freeSlots.map((slot, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700/50 pb-1"
+                                  >
+                                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                      Vacant ({slot.durationMinutes} minutes)
+                                    </span>
+                                    <span className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                      {slot.start} – {slot.end}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Scheduled classes list footer if any */}
+                          {classes.length > 0 && (
+                            <div className="mt-3">
+                              <details className="text-xs group">
+                                <summary className="cursor-pointer font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center justify-between select-none">
+                                  <span>
+                                    {classes.length} scheduled class
+                                    {classes.length > 1 ? 'es' : ''}
+                                  </span>
+                                  <span className="text-[10px] text-teal-700 dark:text-teal-400 group-open:rotate-180 transition-transform">
+                                    ▼
+                                  </span>
+                                </summary>
+                                <div className="mt-2 flex flex-col gap-1.5 pl-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                  {classes.map((c, i) => (
+                                    <div
+                                      key={i}
+                                      className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700/50 pb-1"
+                                    >
+                                      <span
+                                        className="font-medium text-slate-800 dark:text-slate-100 truncate max-w-[190px]"
+                                        title={c.class}
+                                      >
+                                        {c.class}
+                                      </span>
+                                      <span className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                        {c.start} – {c.end}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-slate-500 text-sm">
-                No classes scheduled on weekends. All Fasilkom rooms are free from regular
-                coursework.
+                  );
+                })}
               </div>
             )}
           </div>
