@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-type User = { username: string; fullname: string; role: 'admin' | 'user' };
+export type User = {
+  username: string;
+  fullname: string;
+  role: 'admin' | 'user';
+  prodi?: string;
+  angkatan?: string;
+  kd_org?: string;
+  academicInfo?: string;
+};
 const AuthContext = createContext<{
   user: User | null;
   loading: boolean;

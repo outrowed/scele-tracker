@@ -16,7 +16,15 @@ import {
 import type { Activity } from '../core/src/tracker/types';
 
 afterEach(() => vi.unstubAllGlobals());
-const user = { username: 'student', fullname: 'Student' };
+const user = {
+  username: 'student',
+  fullname: 'Student',
+  npm: undefined,
+  kd_org: undefined,
+  prodi: 'Ilmu Komputer',
+  angkatan: '2026',
+  academicInfo: 'Ilmu Komputer (01.00.12.01)',
+};
 const token = () =>
   jwt.sign(user, settings.secret, { audience: 'scele-tracker', issuer: settings.origin });
 describe('authentication boundary', () => {
