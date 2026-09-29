@@ -148,13 +148,13 @@ export default function DashboardPage() {
           <SectionTitle>Activities</SectionTitle>
           {selectedDayKey && (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 pl-2.5 pr-1.5 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 dark:bg-teal-950 pl-2.5 pr-1.5 py-1 text-xs font-semibold text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800">
                 <span>Day: {selectedDayKey}</span>
                 <button
                   type="button"
                   aria-label="Clear date filter"
                   onClick={() => setSelectedDayKey(null)}
-                  className="rounded-sm p-0.5 text-teal-600 transition hover:bg-teal-100 hover:text-teal-900 cursor-pointer"
+                  className="rounded-sm p-0.5 text-teal-600 dark:text-teal-300 transition hover:bg-teal-100 dark:hover:bg-teal-900 hover:text-teal-900 dark:hover:text-teal-100 cursor-pointer"
                 >
                   <X size={14} />
                 </button>
@@ -179,17 +179,17 @@ export default function DashboardPage() {
 
         <div aria-live="polite">
           {!data ? (
-            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
               Loading your activities…
             </div>
           ) : visible.length ? (
             <TabularActivityList items={visible} now={now} />
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
-              <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 p-4 text-teal-700">
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
+              <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 dark:bg-teal-950 p-4 text-teal-700 dark:text-teal-300">
                 <ClipboardList size={26} />
               </div>
-              <h3 className="font-semibold text-slate-800">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
                 {error
                   ? 'Feed unavailable'
                   : data?.preparing

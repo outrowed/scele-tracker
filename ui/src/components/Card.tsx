@@ -15,7 +15,7 @@ export function Card<T extends ElementType = 'div'>({
   const Component = as || 'div';
   return (
     <Component
-      className={`rounded-xl border border-slate-200 bg-white p-6 ${className}`}
+      className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 ${className}`}
       {...props}
     >
       {children}

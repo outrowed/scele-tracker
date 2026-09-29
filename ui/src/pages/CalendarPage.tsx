@@ -419,12 +419,12 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-xs transition-all hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-xs transition-all hover:bg-white hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md active:scale-95 cursor-pointer"
           >
             <ArrowLeft size={18} />
           </button>
           <h2
-            className="min-w-[10rem] text-center text-lg sm:text-xl font-bold tracking-tight text-slate-900"
+            className="min-w-[10rem] text-center text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
             aria-live="polite"
           >
             {title}
@@ -439,7 +439,7 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-xs transition-all hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-xs transition-all hover:bg-white hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md active:scale-95 cursor-pointer"
           >
             <ArrowRight size={18} />
           </button>
@@ -452,15 +452,15 @@ export default function CalendarPage() {
               setAnchorRect(null);
               setAnchorInfo(null);
             }}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700 cursor-pointer sm:ml-1"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:border-teal-400 dark:hover:border-teal-600 hover:text-teal-700 dark:hover:text-teal-300 cursor-pointer sm:ml-1"
           >
             Today
           </button>
         </div>
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
           <span>Course</span>
           <select
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-normal text-slate-800 shadow-xs focus:border-teal-500 focus:outline-hidden"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm font-normal text-slate-800 dark:text-slate-100 shadow-xs focus:border-teal-500 dark:focus:border-teal-500 focus:outline-hidden"
             value={course}
             onChange={(event) => {
               setCourse(event.target.value);
@@ -486,15 +486,21 @@ export default function CalendarPage() {
         snapshot && (
           <>
             {/* Legend and range explanation */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                  <span className="font-medium text-slate-700">Quiz</span> (Blue)
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    Quiz
+                  </span>{' '}
+                  (Blue)
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                  <span className="font-medium text-slate-700">Assignment</span> (Green)
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    Assignment
+                  </span>{' '}
+                  (Green)
                 </span>
               </div>
               <p>
@@ -506,18 +512,18 @@ export default function CalendarPage() {
             {/* Monthly range-bar calendar */}
             <div
               ref={calendarRef}
-              className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs"
+              className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs"
               role="region"
               aria-label="Monthly calendar"
               tabIndex={0}
             >
               <div className="min-w-[800px]">
                 {/* Weekday headers: Mon - Sun */}
-                <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200 bg-slate-50/75">
+                <div className="grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-600 bg-slate-50/75 dark:bg-slate-700">
                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName) => (
                     <div
                       key={dayName}
-                      className="py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500"
+                      className="py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
                       {dayName}
                     </div>
@@ -525,7 +531,7 @@ export default function CalendarPage() {
                 </div>
 
                 {/* Weeks */}
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
                   {weeks.map((week, weekIdx) => {
                     const weekDays = week.map((d) => ({ dateKey: d }));
                     const ranges = weekRanges(filtered, weekDays);
@@ -538,7 +544,7 @@ export default function CalendarPage() {
                         data-calendar-week="true"
                       >
                         {/* Top row: Day numbers across the 7 days */}
-                        <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-100 bg-slate-50/40">
+                        <div className="grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-600 bg-slate-50/40 dark:bg-slate-700">
                           {week.map((day) => {
                             const isCurrentMonth = day.startsWith(month);
                             const isToday = day === today;
@@ -556,12 +562,12 @@ export default function CalendarPage() {
                                 aria-pressed={isDateSelected}
                                 className={`relative flex items-center justify-between px-2.5 py-1.5 text-xs transition cursor-pointer text-left ${
                                   isDateSelected
-                                    ? 'bg-teal-100/90 text-teal-900 font-medium'
+                                    ? 'bg-teal-100/90 dark:bg-teal-900/90 text-teal-900 dark:text-teal-100 font-medium'
                                     : isToday
-                                      ? 'bg-teal-50/80 font-medium'
+                                      ? 'bg-teal-50/80 dark:bg-teal-950/80 font-medium'
                                       : isCurrentMonth
-                                        ? 'bg-white hover:bg-slate-50'
-                                        : 'bg-slate-50/60 hover:bg-slate-100/60'
+                                        ? 'bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600'
+                                        : 'bg-slate-50/60 dark:bg-slate-700 hover:bg-slate-100/60 dark:hover:bg-slate-600'
                                 }`}
                               >
                                 {/* Top accent bar ONLY appears when selecting a date */}
@@ -574,12 +580,12 @@ export default function CalendarPage() {
                                 <span
                                   className={`font-semibold ${
                                     isDateSelected
-                                      ? 'text-teal-950 font-bold'
+                                      ? 'text-teal-950 dark:text-teal-100 font-bold'
                                       : isToday
-                                        ? 'text-teal-900 font-bold'
+                                        ? 'text-teal-900 dark:text-teal-100 font-bold'
                                         : isCurrentMonth
-                                          ? 'text-slate-700'
-                                          : 'text-slate-400'
+                                          ? 'text-slate-700 dark:text-slate-200'
+                                          : 'text-slate-400 dark:text-slate-400'
                                   }`}
                                 >
                                   {isToday ? 'Today' : ''}
@@ -588,12 +594,12 @@ export default function CalendarPage() {
                                 <span
                                   className={`text-xs font-semibold ${
                                     isDateSelected
-                                      ? 'text-teal-950 font-bold'
+                                      ? 'text-teal-950 dark:text-teal-100 font-bold'
                                       : isToday
-                                        ? 'text-teal-800 font-bold'
+                                        ? 'text-teal-800 dark:text-teal-200 font-bold'
                                         : isCurrentMonth
-                                          ? 'text-slate-700'
-                                          : 'text-slate-400'
+                                          ? 'text-slate-700 dark:text-slate-200'
+                                          : 'text-slate-400 dark:text-slate-400'
                                   }`}
                                 >
                                   {Number(day.slice(-2))}
@@ -608,7 +614,7 @@ export default function CalendarPage() {
                           {/* Background vertical day lines and TODAY watermark */}
                           <div
                             aria-hidden="true"
-                            className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 select-none"
+                            className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 select-none"
                           >
                             {week.map((day) => {
                               const isToday = day === today;
@@ -620,16 +626,16 @@ export default function CalendarPage() {
                                   key={day}
                                   className={`flex items-center justify-center transition ${
                                     isDateSelected
-                                      ? 'bg-teal-100/30'
+                                      ? 'bg-teal-100/30 dark:bg-teal-900/30'
                                       : isToday
-                                        ? 'bg-teal-50/40'
+                                        ? 'bg-teal-50/40 dark:bg-teal-950/40'
                                         : isCurrentMonth
-                                          ? 'bg-white'
-                                          : 'bg-slate-50/40'
+                                          ? 'bg-white dark:bg-slate-800'
+                                          : 'bg-slate-50/40 dark:bg-slate-800/40'
                                   }`}
                                 >
                                   {isToday && (
-                                    <span className="text-xs font-bold tracking-widest text-teal-800/20 uppercase select-none">
+                                    <span className="text-xs font-bold tracking-widest text-teal-800/20 dark:text-teal-200/20 uppercase select-none">
                                       TODAY
                                     </span>
                                   )}
@@ -670,8 +676,8 @@ export default function CalendarPage() {
                                   roundLeft ? 'ml-1 border-l' : 'border-l-0'
                                 } ${roundRight ? 'mr-1 border-r' : 'border-r-0'} ${
                                   isQuiz
-                                    ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200'
-                                    : 'border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                                    ? 'border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800'
+                                    : 'border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-200'
                                 } ${
                                   isFocused
                                     ? 'ring-2 ring-teal-700 ring-offset-1 font-bold shadow-xs'
@@ -742,25 +748,25 @@ export default function CalendarPage() {
                 role="region"
                 aria-label="Selected activity"
                 style={getPopupStyle()}
-                className={`fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xl md:p-5 ${
+                className={`fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-700/90 bg-white dark:bg-slate-800 p-4 shadow-2xl md:p-5 ${
                   !anchorRect || (anchorRect.width === 0 && anchorRect.height === 0)
                     ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[420px]'
                     : 'max-md:inset-x-3 max-md:bottom-3 max-md:top-auto max-md:w-auto max-md:max-h-[80vh] max-md:rounded-2xl'
                 }`}
               >
                 {/* Popup Header */}
-                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
                         Date Schedule
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                      <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
                         {selectedDateActivities.length}{' '}
                         {selectedDateActivities.length === 1 ? 'activity' : 'activities'}
                       </span>
                     </div>
-                    <h3 className="mt-1 text-base font-bold text-slate-900">
+                    <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">
                       {formatPopupDate(selectedDate)}
                     </h3>
                   </div>
@@ -773,7 +779,7 @@ export default function CalendarPage() {
                       setAnchorInfo(null);
                     }}
                     aria-label="Close selection"
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                    className="rounded-lg p-1.5 text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition cursor-pointer"
                   >
                     <X size={18} />
                   </button>
@@ -782,15 +788,15 @@ export default function CalendarPage() {
                 {/* Tabular Activity List on that date */}
                 <div className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
                   {selectedDateActivities.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-slate-500">
+                    <p className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">
                       No activities scheduled on this date.
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2.5">
-                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               <th className="py-2 pl-3 pr-2 whitespace-nowrap">Type</th>
                               <th className="py-2 px-2">Activity</th>
                               <th className="py-2 pl-2 pr-3 text-right whitespace-nowrap">
@@ -798,7 +804,7 @@ export default function CalendarPage() {
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {selectedDateActivities.map((act) => {
                               const isItemQuiz = act.kind === 'quiz';
                               const isItemFocused = focusedActivity?.id === act.id;
@@ -810,16 +816,16 @@ export default function CalendarPage() {
                                   onClick={() => setSelectedActivityId(act.id)}
                                   className={`cursor-pointer transition ${
                                     isItemFocused
-                                      ? 'bg-teal-50/90 font-medium'
-                                      : 'hover:bg-slate-50/80'
+                                      ? 'bg-teal-50/90 dark:bg-teal-950/90 font-medium'
+                                      : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/80'
                                   }`}
                                 >
                                   <td className="py-2 pl-3 pr-2 whitespace-nowrap align-top">
                                     <span
                                       className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
                                         isItemQuiz
-                                          ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
-                                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                          ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60'
+                                          : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60'
                                       }`}
                                     >
                                       <span
@@ -832,29 +838,33 @@ export default function CalendarPage() {
                                   </td>
                                   <td className="py-2 px-2 min-w-0 max-w-[320px]">
                                     <div
-                                      className="font-semibold text-slate-800 line-clamp-2 leading-snug break-words"
+                                      className="font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug break-words"
                                       title={act.name}
                                     >
                                       {act.name}
                                     </div>
                                     <div
-                                      className="truncate text-[10px] text-slate-500 mt-0.5"
+                                      className="truncate text-[10px] text-slate-500 dark:text-slate-400 mt-0.5"
                                       title={act.courseName}
                                     >
                                       {act.courseName}
                                     </div>
                                   </td>
-                                  <td className="py-2 pl-2 pr-3 whitespace-nowrap text-right text-[11px] text-slate-600 align-top">
+                                  <td className="py-2 pl-2 pr-3 whitespace-nowrap text-right text-[11px] text-slate-600 dark:text-slate-300 align-top">
                                     {act.dueAt ? (
                                       <span
                                         className={
-                                          isDueToday ? 'font-bold text-amber-800' : ''
+                                          isDueToday
+                                            ? 'font-bold text-amber-800 dark:text-amber-200'
+                                            : ''
                                         }
                                       >
                                         {isDueToday ? 'Due today' : dateLabel(act.dueAt)}
                                       </span>
                                     ) : (
-                                      <span className="text-slate-400">No date</span>
+                                      <span className="text-slate-400 dark:text-slate-400">
+                                        No date
+                                      </span>
                                     )}
                                   </td>
                                 </tr>
@@ -866,45 +876,45 @@ export default function CalendarPage() {
 
                       {/* Focused activity details inside popup */}
                       {focusedActivity && (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50/75 p-3 shrink-0">
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/75 dark:bg-slate-800/75 p-3 shrink-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                 {focusedActivity.courseName}
                               </span>
-                              <h4 className="text-sm font-bold text-slate-900 mt-0.5 leading-snug break-words">
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5 leading-snug break-words">
                                 {focusedActivity.name}
                               </h4>
                             </div>
                             <Link
                               to={`/activities/${encodeURIComponent(focusedActivity.id)}`}
-                              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 hover:underline"
+                              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 hover:underline"
                             >
                               <span>View activity details</span>
                               <ArrowUpRight size={13} />
                             </Link>
                           </div>
                           {focusedActivity.description && (
-                            <p className="mt-1.5 line-clamp-3 text-xs text-slate-600 leading-relaxed break-words">
+                            <p className="mt-1.5 line-clamp-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed break-words">
                               {focusedActivity.description}
                             </p>
                           )}
                           <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
-                            <div className="rounded-md border border-slate-200/80 bg-white p-1.5">
-                              <span className="block text-slate-400 text-[10px]">
+                            <div className="rounded-md border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-1.5">
+                              <span className="block text-slate-400 dark:text-slate-400 text-[10px]">
                                 Opens
                               </span>
-                              <span className="font-semibold text-slate-700 truncate block">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
                                 {focusedActivity.opensAt
                                   ? dateLabel(focusedActivity.opensAt)
                                   : 'Not set'}
                               </span>
                             </div>
-                            <div className="rounded-md border border-slate-200/80 bg-white p-1.5">
-                              <span className="block text-slate-400 text-[10px]">
+                            <div className="rounded-md border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-1.5">
+                              <span className="block text-slate-400 dark:text-slate-400 text-[10px]">
                                 {focusedActivity.kind === 'quiz' ? 'Closes' : 'Due'}
                               </span>
-                              <span className="font-semibold text-slate-700 truncate block">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
                                 {focusedActivity.dueAt
                                   ? dateLabel(focusedActivity.dueAt)
                                   : 'Not set'}

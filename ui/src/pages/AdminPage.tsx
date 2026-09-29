@@ -60,7 +60,7 @@ export default function AdminPage() {
       {error && (
         <p
           role="alert"
-          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+          className="mt-6 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-5 py-4 text-sm leading-6 text-amber-900 dark:text-amber-100"
         >
           {error}
         </p>
@@ -78,7 +78,7 @@ export default function AdminPage() {
           {resetMessage && (
             <span
               role="status"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-300"
             >
               <Check size={14} />
               {resetMessage}
@@ -97,11 +97,14 @@ export default function AdminPage() {
               Status: {data.configured ? 'Configured' : 'No sources configured'}
             </p>
             {data.sources.map((source) => (
-              <p key={source.id} className="my-2 text-sm text-slate-700">
+              <p
+                key={source.id}
+                className="my-2 text-sm text-slate-700 dark:text-slate-200"
+              >
                 Source: {source.id} · State: {source.state}
               </p>
             ))}
-            <p className="mt-4 text-xs text-slate-500">
+            <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
               Last checked:{' '}
               {data.checkedAt ? new Date(data.checkedAt).toLocaleString() : 'Never'}
             </p>
@@ -119,19 +122,22 @@ export default function AdminPage() {
           Inspect shared snapshot
         </Button>
         {sharedError && (
-          <p role="alert" className="mt-3 text-sm text-amber-800">
+          <p role="alert" className="mt-3 text-sm text-amber-800 dark:text-amber-200">
             {sharedError}
           </p>
         )}
         {shared && (
           <>
-            <p className="mt-4 text-sm text-slate-600">
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
               {shared.activities.length} activities ·{' '}
               {shared.preparing ? 'Preparing' : shared.stale ? 'Stale' : 'Current'}
             </p>
-            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm text-slate-700">
+            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm text-slate-700 dark:text-slate-200">
               {shared.activities.map((item) => (
-                <li key={item.id} className="border-b border-slate-100 pb-2">
+                <li
+                  key={item.id}
+                  className="border-b border-slate-100 dark:border-slate-700 pb-2"
+                >
                   {item.courseName} · {item.name} ·{' '}
                   {item.dueAt
                     ? new Date(item.dueAt * 1000).toLocaleString()

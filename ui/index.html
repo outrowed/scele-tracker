@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f766e" />
+    <script>
+      try {
+        const theme = localStorage.getItem('scele-theme');
+        document.documentElement.classList.toggle(
+          'dark',
+          theme === 'dark' ||
+            (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches),
+        );
+      } catch {
+        document.documentElement.classList.toggle(
+          'dark',
+          matchMedia('(prefers-color-scheme: dark)').matches,
+        );
+      }
+    </script>
     <meta
       name="description"
       content="A shared SCELE assignment and quiz tracker for CSUI students."

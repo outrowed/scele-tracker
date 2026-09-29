@@ -41,10 +41,10 @@ export function WeekBar({
       {/* Header controls for week navigation */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-800 md:text-lg">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 md:text-lg">
             Weekly Schedule
           </h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+          <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
             {weekLabel}
           </span>
         </div>
@@ -52,21 +52,21 @@ export function WeekBar({
           <button
             type="button"
             onClick={onToday}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-teal-400 hover:text-teal-700"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:border-teal-400 dark:hover:border-teal-600 hover:text-teal-700 dark:hover:text-teal-300"
           >
             Today
           </button>
         )}
       </div>
 
-      <p className="mb-3 text-xs text-slate-500">
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
         Bars span opening to closing/due date, inclusive. Arrows indicate continuation
         outside this week. A single known date is shown on that day; cut-off dates do not
         extend the bar.
       </p>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs">
         <div className="min-w-[700px]">
-          <div className="grid grid-cols-7 divide-x divide-slate-200 border-b border-slate-200">
+          <div className="grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-700">
             {days.map((day) => {
               const isSelected = selectedDayKey === day.dateKey;
               return (
@@ -78,10 +78,10 @@ export function WeekBar({
                   onClick={() => onSelectDay(isSelected ? null : day.dateKey)}
                   className={`relative flex items-center justify-between px-3 py-3 text-sm transition cursor-pointer text-left ${
                     isSelected
-                      ? 'bg-teal-100/90 text-teal-900 font-medium'
+                      ? 'bg-teal-100/90 dark:bg-teal-900/90 text-teal-900 dark:text-teal-100 font-medium'
                       : day.isToday
-                        ? 'bg-teal-50/80 font-medium'
-                        : 'bg-slate-50/60 hover:bg-slate-100/60'
+                        ? 'bg-teal-50/80 dark:bg-teal-950/80 font-medium'
+                        : 'bg-slate-50/60 dark:bg-slate-700 hover:bg-slate-100/60 dark:hover:bg-slate-600'
                   }`}
                 >
                   {/* Top accent bar ONLY appears when selecting a date */}
@@ -94,10 +94,10 @@ export function WeekBar({
                   <span
                     className={`font-semibold ${
                       isSelected
-                        ? 'text-teal-950 font-bold'
+                        ? 'text-teal-950 dark:text-teal-100 font-bold'
                         : day.isToday
-                          ? 'text-teal-900 font-bold'
-                          : 'text-slate-600'
+                          ? 'text-teal-900 dark:text-teal-100 font-bold'
+                          : 'text-slate-600 dark:text-slate-300'
                     }`}
                   >
                     {day.dayName}
@@ -105,10 +105,10 @@ export function WeekBar({
                   <span
                     className={`font-semibold ${
                       isSelected
-                        ? 'text-teal-950 font-bold'
+                        ? 'text-teal-950 dark:text-teal-100 font-bold'
                         : day.isToday
-                          ? 'text-teal-800 font-bold'
-                          : 'text-slate-700'
+                          ? 'text-teal-800 dark:text-teal-200 font-bold'
+                          : 'text-slate-700 dark:text-slate-200'
                     }`}
                   >
                     {day.dayNumber} {day.monthName}
@@ -120,21 +120,21 @@ export function WeekBar({
           <div className="relative">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 select-none"
+              className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 select-none"
             >
               {days.map((day) => (
                 <div
                   key={day.dateKey}
                   className={`flex items-center justify-center transition ${
                     selectedDayKey === day.dateKey
-                      ? 'bg-teal-100/30'
+                      ? 'bg-teal-100/30 dark:bg-teal-900/30'
                       : day.isToday
-                        ? 'bg-teal-50/40'
+                        ? 'bg-teal-50/40 dark:bg-teal-950/40'
                         : ''
                   }`}
                 >
                   {day.isToday && (
-                    <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 uppercase select-none">
+                    <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 dark:text-teal-200/20 uppercase select-none">
                       TODAY
                     </span>
                   )}
@@ -163,8 +163,8 @@ export function WeekBar({
                     roundLeft ? 'ml-1 border-l' : 'border-l-0'
                   } ${roundRight ? 'mr-1 border-r' : 'border-r-0'} ${
                     isQuiz
-                      ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200'
-                      : 'border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                      ? 'border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 hover:bg-blue-200 dark:hover:bg-blue-800'
+                      : 'border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-200'
                   }`;
                   const style = {
                     gridColumn: `${start + 1} / ${end + 2}`,
@@ -221,7 +221,7 @@ export function WeekBar({
                 },
               )}
               {!ranges.length && (
-                <p className="col-span-7 px-4 text-sm text-slate-500">
+                <p className="col-span-7 px-4 text-sm text-slate-500 dark:text-slate-400">
                   No activity ranges this week.
                 </p>
               )}
@@ -233,7 +233,7 @@ export function WeekBar({
               onClick={onPrevDay}
               aria-label="Previous day"
               title="Previous day"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white/80 text-slate-700 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
             >
               <ArrowLeft size={18} />
             </button>
@@ -242,7 +242,7 @@ export function WeekBar({
               onClick={onNextDay}
               aria-label="Next day"
               title="Next day"
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white/80 text-slate-700 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 hover:border-slate-400 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 shadow-xs backdrop-blur-xs opacity-50 transition-all hover:opacity-100 hover:bg-white hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md active:scale-95 cursor-pointer focus-visible:opacity-100"
             >
               <ArrowRight size={18} />
             </button>
@@ -251,26 +251,35 @@ export function WeekBar({
       </div>
 
       {/* Legend & Filter indicator */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-            <span className="font-medium text-slate-700">Quiz</span> (Blue)
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              Quiz
+            </span>{' '}
+            (Blue)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-            <span className="font-medium text-slate-700">Assignment</span> (Green)
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              Assignment
+            </span>{' '}
+            (Green)
           </span>
         </div>
         {selectedDayKey && (
           <div className="flex items-center gap-2">
             <span>
-              Filtering by: <strong className="text-slate-800">{selectedDayKey}</strong>
+              Filtering by:{' '}
+              <strong className="text-slate-800 dark:text-slate-100">
+                {selectedDayKey}
+              </strong>
             </span>
             <button
               type="button"
               onClick={() => onSelectDay(null)}
-              className="text-teal-700 hover:underline font-medium"
+              className="text-teal-700 dark:text-teal-300 hover:underline font-medium"
             >
               Clear filter
             </button>

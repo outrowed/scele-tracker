@@ -23,15 +23,24 @@ export function ActivityStatus({
     undated: 'No deadline',
   };
   const colors = {
-    completed: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    overdue: 'border-rose-200 bg-rose-50 text-rose-800',
-    submittedLate: 'border-amber-200 bg-amber-50 text-amber-800',
-    closed: 'border-slate-200 bg-slate-100 text-slate-700',
-    unverified: 'border-amber-200 bg-amber-50 text-amber-800',
-    dueToday: 'border-amber-200 bg-amber-50 text-amber-800',
-    available: 'border-teal-200 bg-teal-50 text-teal-800',
-    notOpen: 'border-slate-200 bg-slate-50 text-slate-600',
-    undated: 'border-slate-200 bg-slate-50 text-slate-600',
+    completed:
+      'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200',
+    overdue:
+      'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200',
+    submittedLate:
+      'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200',
+    closed:
+      'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200',
+    unverified:
+      'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200',
+    dueToday:
+      'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200',
+    available:
+      'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200',
+    notOpen:
+      'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    undated:
+      'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
   };
   const Icon =
     state === 'completed' || state === 'submittedLate'

@@ -77,7 +77,7 @@ export function ActivityFilters({
         aria-expanded={open}
         aria-controls="activity-filter-panel"
         onClick={() => setOpen(!open)}
-        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition hover:border-teal-400 ${open || count ? 'border-teal-300 bg-teal-50 text-teal-800' : 'border-slate-200 bg-white text-slate-700'}`}
+        className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition hover:border-teal-400 dark:hover:border-teal-600 ${open || count ? 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200'}`}
       >
         <SlidersHorizontal size={16} aria-hidden="true" /> Filters{' '}
         {count > 0 && (
@@ -99,7 +99,7 @@ export function ActivityFilters({
                 type="button"
                 aria-label={`Remove ${labels[key]}: ${options[key].find((option) => option[0] === id)?.[1] || id}`}
                 onClick={() => toggle(key, id)}
-                className="inline-flex max-w-full items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-900 hover:bg-teal-100"
+                className="inline-flex max-w-full items-center gap-2 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-3 py-1.5 text-xs font-medium text-teal-900 dark:text-teal-100 hover:bg-teal-100 dark:hover:bg-teal-900"
               >
                 <span className="truncate">
                   {labels[key]}:{' '}
@@ -111,7 +111,7 @@ export function ActivityFilters({
           )}
           <button
             type="button"
-            className="px-2 py-1 text-xs font-medium text-slate-500 underline hover:text-slate-800"
+            className="px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 underline hover:text-slate-800 dark:hover:text-slate-100"
             onClick={() => onChange(emptyFilters)}
           >
             Clear all
@@ -121,18 +121,18 @@ export function ActivityFilters({
       {open && (
         <div
           id="activity-filter-panel"
-          className="mt-3 grid gap-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
+          className="mt-3 grid gap-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
         >
           {keys.map((key) => (
             <fieldset key={key} className="min-w-0">
-              <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {labels[key]}
               </legend>
               <div className="max-h-40 space-y-1 overflow-y-auto">
                 {options[key].map(([id, label]) => (
                   <label
                     key={id}
-                    className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     <input
                       type="checkbox"

@@ -21,22 +21,22 @@ function SectionDivider({ label }: { label: string }) {
       role="separator"
       aria-label={label}
     >
-      <div className="h-px flex-1 bg-slate-200" />
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 select-none">
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 select-none">
         {label}
       </span>
-      <div className="h-px flex-1 bg-slate-200" />
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
     </div>
   );
 }
 
 function renderTable(tableItems: Activity[], now: number) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50/75 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/75 dark:bg-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
               <th scope="col" className="py-3.5 pl-4 pr-3.5 sm:pl-6 min-w-[180px]">
                 Activity Name
               </th>
@@ -57,7 +57,7 @@ function renderTable(tableItems: Activity[], now: number) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {tableItems.map((item) => {
               const timeState = deadlineTimeState(item, now);
               const isQuiz = item.kind === 'quiz';
@@ -65,8 +65,8 @@ function renderTable(tableItems: Activity[], now: number) {
               // Row background highlight for today
               const rowBg =
                 timeState === 'today'
-                  ? 'bg-amber-50/40 hover:bg-amber-50/70'
-                  : 'hover:bg-slate-50/75';
+                  ? 'bg-amber-50/40 dark:bg-amber-950/40 hover:bg-amber-50/70 dark:hover:bg-amber-950/70'
+                  : 'hover:bg-slate-50/75 dark:hover:bg-slate-800/75';
 
               return (
                 <tr key={item.id} className={`transition ${rowBg}`}>
@@ -75,17 +75,17 @@ function renderTable(tableItems: Activity[], now: number) {
                     <div className="flex items-start gap-2">
                       <Link
                         to={`/activities/${item.id}`}
-                        className="font-semibold text-slate-800 transition hover:text-teal-700 inline-flex items-center gap-1 group"
+                        className="font-semibold text-slate-800 dark:text-slate-100 transition hover:text-teal-700 dark:hover:text-teal-300 inline-flex items-center gap-1 group"
                       >
                         <span className="line-clamp-2">{item.name}</span>
                         <ArrowUpRight
                           size={14}
-                          className="shrink-0 text-slate-400 group-hover:text-teal-700 transition"
+                          className="shrink-0 text-slate-400 dark:text-slate-400 group-hover:text-teal-700 transition"
                         />
                       </Link>
                     </div>
                     {item.description && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-400">
+                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-400 dark:text-slate-400">
                         {item.description}
                       </p>
                     )}
@@ -94,12 +94,12 @@ function renderTable(tableItems: Activity[], now: number) {
                   {/* Column 2: Type (Blue for Quiz, Green for Assignment) */}
                   <td className="whitespace-nowrap px-3.5 py-3.5">
                     {isQuiz ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/70">
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/70">
                         <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
                         Quiz
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/70">
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
                         Assignment
                       </span>
@@ -109,7 +109,7 @@ function renderTable(tableItems: Activity[], now: number) {
                   {/* Column 3: Course - wrapped to prevent overlapping with Due Date */}
                   <td className="px-3.5 py-3.5 min-w-[160px] max-w-[260px]">
                     <span
-                      className="block whitespace-normal break-words text-xs font-medium leading-relaxed text-slate-600"
+                      className="block whitespace-normal break-words text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300"
                       title={item.courseName}
                     >
                       {item.courseName}
@@ -117,9 +117,12 @@ function renderTable(tableItems: Activity[], now: number) {
                   </td>
 
                   {/* Column 4: Due Date */}
-                  <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 font-medium min-w-[140px]">
+                  <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 dark:text-slate-300 font-medium min-w-[140px]">
                     <span className="inline-flex items-center gap-1.5">
-                      <Clock3 size={13} className="shrink-0 text-slate-400" />
+                      <Clock3
+                        size={13}
+                        className="shrink-0 text-slate-400 dark:text-slate-400"
+                      />
                       <span>{dateLabel(scheduleAt(item))}</span>
                     </span>
                   </td>
@@ -212,17 +215,17 @@ export function TabularActivityList({
             {/* Single Month Header */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-teal-700" />
-                <h3 className="text-base font-bold tracking-tight text-slate-900 md:text-lg">
+                <Calendar size={18} className="text-teal-700 dark:text-teal-300" />
+                <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-lg">
                   {monthTitle}
                 </h3>
               </div>
               {summaryLabel && (
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   {summaryLabel}
                 </span>
               )}
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
             </div>
 
             {/* 1. Active tasks for this month */}

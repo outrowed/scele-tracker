@@ -10,7 +10,7 @@ export interface PageTitleProps {
 export function PageTitle({ children, className = '' }: PageTitleProps) {
   return (
     <h1
-      className={`text-3xl font-semibold leading-tight tracking-tight text-slate-900 md:text-4xl ${className}`}
+      className={`text-3xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100 md:text-4xl ${className}`}
     >
       {children}
     </h1>
@@ -25,7 +25,7 @@ export interface PageDescriptionProps {
 export function PageDescription({ children, className = '' }: PageDescriptionProps) {
   return (
     <p
-      className={`mt-2 text-sm leading-relaxed text-slate-600 sm:text-base ${className}`}
+      className={`mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base ${className}`}
     >
       {children}
     </p>
@@ -46,7 +46,10 @@ export function SectionTitle({
   id,
 }: SectionTitleProps) {
   return (
-    <Component id={id} className={`text-lg font-semibold text-slate-900 ${className}`}>
+    <Component
+      id={id}
+      className={`text-lg font-semibold text-slate-900 dark:text-slate-100 ${className}`}
+    >
       {children}
     </Component>
   );
@@ -64,7 +67,10 @@ export function SectionDescription({
   role,
 }: SectionDescriptionProps) {
   return (
-    <p role={role} className={`mt-1 text-sm leading-relaxed text-slate-500 ${className}`}>
+    <p
+      role={role}
+      className={`mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400 ${className}`}
+    >
       {children}
     </p>
   );
@@ -78,7 +84,7 @@ export interface SectionKickerProps {
 export function SectionKicker({ children, className = '' }: SectionKickerProps) {
   return (
     <span
-      className={`text-[10px] font-bold uppercase tracking-[0.16em] text-teal-700 ${className}`}
+      className={`text-[10px] font-bold uppercase tracking-[0.16em] text-teal-700 dark:text-teal-300 ${className}`}
     >
       {children}
     </span>
@@ -98,7 +104,7 @@ export function BackLink({
   children = 'Back',
   className = '',
 }: BackLinkProps) {
-  const commonClasses = `inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 transition hover:text-teal-800 hover:underline cursor-pointer ${className}`;
+  const commonClasses = `inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 dark:text-teal-300 transition hover:text-teal-800 dark:hover:text-teal-200 hover:underline cursor-pointer ${className}`;
 
   if (onClick) {
     return (

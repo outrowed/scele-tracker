@@ -41,7 +41,7 @@ export default function ActivityDetailsPage() {
       {error ? (
         <p
           role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+          className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-5 py-4 text-sm leading-6 text-amber-900 dark:text-amber-100"
         >
           {error}
         </p>
@@ -64,7 +64,7 @@ export default function ActivityDetailsPage() {
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <Card as="section">
               <SectionTitle className="mb-5 text-xl">Activity details</SectionTitle>
-              <div className="whitespace-pre-wrap break-words leading-8 text-slate-600">
+              <div className="whitespace-pre-wrap break-words leading-8 text-slate-600 dark:text-slate-300">
                 {item.description ||
                   'No description is available. View the activity in SCELE for full instructions.'}
               </div>
@@ -73,7 +73,9 @@ export default function ActivityDetailsPage() {
               <SectionTitle className="mb-5">Key dates</SectionTitle>
               <dl className="space-y-5">
                 <div>
-                  <dt className="text-xs text-slate-500">Your progress</dt>
+                  <dt className="text-xs text-slate-500 dark:text-slate-400">
+                    Your progress
+                  </dt>
                   <dd className="mt-1">
                     <ActivityStatus item={item} />
                   </dd>
@@ -90,7 +92,9 @@ export default function ActivityDetailsPage() {
                   ],
                 ].map(([label, value]) => (
                   <div key={label}>
-                    <dt className="text-xs text-slate-500">{label}</dt>
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">
+                      {label}
+                    </dt>
                     <dd className="mt-1 text-sm font-medium">{value}</dd>
                   </div>
                 ))}
@@ -104,7 +108,7 @@ export default function ActivityDetailsPage() {
               >
                 Open in SCELE <ArrowUpRight size={17} />
               </ButtonLink>
-              <p className="mt-4 text-xs leading-5 text-slate-500">
+              <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
                 Opens using your own SCELE session. You still need access to this course.
                 No quiz is started by this tracker.
               </p>

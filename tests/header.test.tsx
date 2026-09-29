@@ -3,15 +3,60 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SiteHeader } from '../ui/src/components/SiteHeader';
+import { SiteFooter } from '../ui/src/components/SiteFooter';
 import * as AuthContextModule from '../ui/src/context/AuthContext';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  localStorage.clear();
+  document.documentElement.classList.remove('dark');
 });
 
 describe('SiteHeader mobile hamburger navigation', () => {
+  it('persists a manual theme and follows system changes in automatic mode', async () => {
+    const listeners = new Set<() => void>();
+    const media = {
+      matches: false,
+      addEventListener: (_event: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_event: string, listener: () => void) =>
+        listeners.delete(listener),
+    };
+    vi.stubGlobal('matchMedia', () => media);
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: null,
+      loading: false,
+      error: '',
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <SiteHeader />
+        <SiteFooter />
+      </MemoryRouter>,
+    );
+    const theme = within(screen.getByRole('contentinfo')).getByRole('combobox', {
+      name: /color theme/i,
+    });
+    expect(within(screen.getByRole('banner')).queryByRole('combobox')).toBeNull();
+    fireEvent.change(theme, { target: { value: 'dark' } });
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(localStorage.getItem('scele-theme')).toBe('dark');
+    fireEvent.change(theme, { target: { value: 'system' } });
+    expect(localStorage.getItem('scele-theme')).toBeNull();
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    media.matches = true;
+    for (const listener of listeners) listener();
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+  });
+
   it('toggles mobile menu and displays user details and navigation links', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     const logoutMock = vi.fn().mockResolvedValue(undefined);
     vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
       user: { username: 'testuser', fullname: 'Test Student', role: 'admin' },

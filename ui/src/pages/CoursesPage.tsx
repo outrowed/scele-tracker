@@ -155,8 +155,8 @@ export default function CoursesPage() {
               key={title}
               className={`rounded-xl border p-5 text-left transition ${
                 isSelected
-                  ? 'border-teal-500 bg-teal-50/40 ring-2 ring-teal-600/20 shadow-2xs'
-                  : 'border-slate-200 bg-white hover:border-teal-400'
+                  ? 'border-teal-500 dark:border-teal-500 bg-teal-50/40 dark:bg-teal-950/40 ring-2 ring-teal-600/20 shadow-2xs'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-400 dark:hover:border-teal-600'
               }`}
               aria-pressed={isSelected}
               onClick={() =>
@@ -171,13 +171,18 @@ export default function CoursesPage() {
                 })
               }
             >
-              <span className="flex items-center justify-between text-sm text-slate-500">
+              <span className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
                 <span>{title}</span>
-                <Icon size={18} className={isSelected ? 'text-teal-700' : ''} />
+                <Icon
+                  size={18}
+                  className={isSelected ? 'text-teal-700 dark:text-teal-300' : ''}
+                />
               </span>
               <span
                 className={`mt-4 block text-3xl font-semibold tracking-tight ${
-                  isSelected ? 'text-teal-950 font-bold' : 'text-slate-900'
+                  isSelected
+                    ? 'text-teal-950 dark:text-teal-100 font-bold'
+                    : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
                 {busy && !data ? '—' : count}
@@ -207,7 +212,7 @@ export default function CoursesPage() {
         {/* Activities grouped by course */}
         <div className="flex flex-col gap-6" aria-live="polite">
           {busy && !data ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
+            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
               Loading your course activities…
             </div>
           ) : groupedCourses.length ? (
@@ -220,33 +225,33 @@ export default function CoursesPage() {
               return (
                 <div
                   key={courseId}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs"
+                  className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs"
                 >
                   {/* Course Group Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/75 px-5 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-600 bg-slate-50/75 dark:bg-slate-700 px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-xl border border-teal-200/80 bg-teal-50 p-2 text-teal-700 shadow-2xs">
+                      <div className="rounded-xl border border-teal-200/80 dark:border-teal-800/80 bg-teal-50 dark:bg-teal-950 p-2 text-teal-700 dark:text-teal-300 shadow-2xs">
                         <BookOpen size={18} />
                       </div>
-                      <h3 className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">
+                      <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-slate-100 tracking-tight">
                         {courseName}
                       </h3>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {quizzesCount > 0 && (
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
                           {quizzesCount} {quizzesCount === 1 ? 'quiz' : 'quizzes'}
                         </span>
                       )}
                       {assignmentsCount > 0 && (
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
                           {assignmentsCount}{' '}
                           {assignmentsCount === 1 ? 'assignment' : 'assignments'}
                         </span>
                       )}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-600 shadow-2xs">
+                      <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-2xs">
                         {activities.length} total
                       </span>
                     </div>
@@ -256,7 +261,7 @@ export default function CoursesPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-sm">
                       <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50/50 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                        <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
                           <th
                             scope="col"
                             className="py-3.5 pl-4 pr-3 sm:pl-6 min-w-[200px]"
@@ -280,15 +285,15 @@ export default function CoursesPage() {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                         {activities.map((item) => {
                           const timeState = deadlineTimeState(item, now);
                           const isQuiz = item.kind === 'quiz';
 
                           const rowBg =
                             timeState === 'today'
-                              ? 'bg-amber-50/30 hover:bg-amber-50/60'
-                              : 'hover:bg-slate-50/75';
+                              ? 'bg-amber-50/30 dark:bg-amber-950/30 hover:bg-amber-50/60 dark:hover:bg-amber-950/60'
+                              : 'hover:bg-slate-50/75 dark:hover:bg-slate-800/75';
 
                           return (
                             <tr key={item.id} className={`transition ${rowBg}`}>
@@ -296,37 +301,40 @@ export default function CoursesPage() {
                                 <div className="flex items-start gap-2">
                                   <Link
                                     to={`/activities/${item.id}`}
-                                    className="font-semibold text-slate-800 transition hover:text-teal-700 inline-flex items-center gap-1 group"
+                                    className="font-semibold text-slate-800 dark:text-slate-100 transition hover:text-teal-700 dark:hover:text-teal-300 inline-flex items-center gap-1 group"
                                   >
                                     <span className="line-clamp-2">{item.name}</span>
                                     <ArrowUpRight
                                       size={14}
-                                      className="shrink-0 text-slate-400 group-hover:text-teal-700 transition"
+                                      className="shrink-0 text-slate-400 dark:text-slate-400 group-hover:text-teal-700 transition"
                                     />
                                   </Link>
                                 </div>
                                 {item.description && (
-                                  <p className="mt-0.5 line-clamp-1 text-xs text-slate-400">
+                                  <p className="mt-0.5 line-clamp-1 text-xs text-slate-400 dark:text-slate-400">
                                     {item.description}
                                   </p>
                                 )}
                               </td>
                               <td className="whitespace-nowrap px-3.5 py-3.5">
                                 {isQuiz ? (
-                                  <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/70">
+                                  <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/70">
                                     <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
                                     Quiz
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/70">
+                                  <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
                                     Assignment
                                   </span>
                                 )}
                               </td>
-                              <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 font-medium min-w-[140px]">
+                              <td className="whitespace-nowrap px-3.5 py-3.5 text-xs text-slate-600 dark:text-slate-300 font-medium min-w-[140px]">
                                 <span className="inline-flex items-center gap-1.5">
-                                  <Clock3 size={13} className="shrink-0 text-slate-400" />
+                                  <Clock3
+                                    size={13}
+                                    className="shrink-0 text-slate-400 dark:text-slate-400"
+                                  />
                                   <span>{dateLabel(scheduleAt(item))}</span>
                                 </span>
                               </td>
@@ -343,11 +351,11 @@ export default function CoursesPage() {
               );
             })
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-14 text-center text-slate-500">
-              <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 p-4 text-teal-700">
+            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
+              <div className="mx-auto mb-4 w-fit rounded-full bg-teal-50 dark:bg-teal-950 p-4 text-teal-700 dark:text-teal-300">
                 <ClipboardList size={26} />
               </div>
-              <h3 className="font-semibold text-slate-800">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
                 {error
                   ? 'Feed unavailable'
                   : data?.preparing

@@ -1,10 +1,11 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 @theme {
   --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 @layer base {
   body {
-    @apply m-0 bg-[#f6f8fa] font-sans text-slate-800 antialiased;
+    @apply m-0 bg-[#f6f8fa] font-sans text-slate-800 antialiased dark:bg-slate-900 dark:text-slate-100;
   }
   button,
   a,
@@ -23,12 +24,35 @@
   a:focus-visible,
   input:focus-visible,
   select:focus-visible {
-    @apply outline-2 outline-offset-4 outline-teal-600;
+    @apply outline-2 outline-offset-4 outline-teal-600 dark:outline-teal-400;
   }
   button,
   input,
   select {
     font: inherit;
+  }
+  :root {
+    --surface: white;
+    --surface-subtle: var(--color-slate-50);
+    --border-muted: var(--color-slate-200);
+    --text-muted: var(--color-slate-500);
+    --text-primary: var(--color-slate-800);
+    --text-secondary: var(--color-slate-700);
+    --accent-subtle: var(--color-teal-50);
+    --accent-text: var(--color-teal-800);
+    --accent-border: var(--color-teal-700);
+  }
+  :root.dark {
+    color-scheme: dark;
+    --surface: var(--color-slate-800);
+    --surface-subtle: var(--color-slate-700);
+    --border-muted: var(--color-slate-700);
+    --text-muted: var(--color-slate-400);
+    --text-primary: var(--color-slate-100);
+    --text-secondary: var(--color-slate-200);
+    --accent-subtle: var(--color-teal-950);
+    --accent-text: var(--color-teal-200);
+    --accent-border: var(--color-teal-700);
   }
 }
 @media (prefers-reduced-motion: reduce) {
