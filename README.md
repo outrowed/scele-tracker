@@ -169,6 +169,7 @@ Administrative access to the `/admin` diagnostic dashboard is governed by `confi
 | `PORT` | Port for the backend Express server | `3001` |
 | `APP_URL` | Public origin used for browser redirects and CAS callback validation | `http://localhost:5173` (dev) |
 | `JWT_SECRET` | Secret key for signing session tokens (min. 32 chars in production) | Generated in dev |
+| `CREDENTIAL_KEY` | 64-char hex key (32 bytes) for AES-256-GCM session credential encryption | Derived from `JWT_SECRET` in dev |
 | `COOKIE_SECURE` | Enforce `Secure` attribute on cookies (`true` in production) | `false` |
 | `MOODLE_ACCOUNTS_FILE` | Path to the private Moodle accounts JSON file | `./config/accounts.json` |
 | `USERS_FILE` | Path to the role configuration JSON file | `./config/users.json` |
