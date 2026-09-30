@@ -19,6 +19,17 @@ export interface FreeTimeSlot {
   durationMinutes: number;
 }
 
+export type TimelineSlotType = 'vacant' | 'class';
+
+export interface TimelineSlot {
+  type: TimelineSlotType;
+  start: string;
+  end: string;
+  durationMinutes: number;
+  label: string;
+  rawClass?: RawClassSlot;
+}
+
 export interface RoomInfo {
   name: string;
   code: string; // 4 to 6 characters, e.g. "A1.09", "1101"
@@ -34,6 +45,7 @@ export interface RoomDayStatus {
   totalFreeMinutes: number;
   totalClassMinutes: number;
   isCompletelyFree: boolean;
+  timeline: TimelineSlot[];
 }
 
 export const WEEKDAYS: {
@@ -43,11 +55,41 @@ export const WEEKDAYS: {
   indonesianName: string;
   dayIndex: number;
 }[] = [
-  { id: 'senin', label: 'Monday', englishName: 'Monday', indonesianName: 'Senin', dayIndex: 1 },
-  { id: 'selasa', label: 'Tuesday', englishName: 'Tuesday', indonesianName: 'Selasa', dayIndex: 2 },
-  { id: 'rabu', label: 'Wednesday', englishName: 'Wednesday', indonesianName: 'Rabu', dayIndex: 3 },
-  { id: 'kamis', label: 'Thursday', englishName: 'Thursday', indonesianName: 'Kamis', dayIndex: 4 },
-  { id: 'jumat', label: 'Friday', englishName: 'Friday', indonesianName: 'Jumat', dayIndex: 5 },
+  {
+    id: 'senin',
+    label: 'Monday',
+    englishName: 'Monday',
+    indonesianName: 'Senin',
+    dayIndex: 1,
+  },
+  {
+    id: 'selasa',
+    label: 'Tuesday',
+    englishName: 'Tuesday',
+    indonesianName: 'Selasa',
+    dayIndex: 2,
+  },
+  {
+    id: 'rabu',
+    label: 'Wednesday',
+    englishName: 'Wednesday',
+    indonesianName: 'Rabu',
+    dayIndex: 3,
+  },
+  {
+    id: 'kamis',
+    label: 'Thursday',
+    englishName: 'Thursday',
+    indonesianName: 'Kamis',
+    dayIndex: 4,
+  },
+  {
+    id: 'jumat',
+    label: 'Friday',
+    englishName: 'Friday',
+    indonesianName: 'Jumat',
+    dayIndex: 5,
+  },
 ];
 
 /**
@@ -161,6 +203,83 @@ export function calculateFreeSlots(
 }
 
 /**
+ * Calculates a chronologically ordered unified timeline of alternating
+ * vacant intervals and scheduled classes between dayStart and dayEnd.
+ */
+export function calculateUnifiedTimeline(
+  classes: RawClassSlot[],
+  dayStart = '08:00',
+  dayEnd = '18:00',
+): TimelineSlot[] {
+  const startMin = timeStringToMinutes(dayStart);
+  const endMin = timeStringToMinutes(dayEnd);
+
+  // Sort classes by start time ascending
+  const sorted = [...classes].sort(
+    (a, b) => timeStringToMinutes(a.start) - timeStringToMinutes(b.start),
+  );
+
+  const timeline: TimelineSlot[] = [];
+  let cur = startMin;
+
+  for (const c of sorted) {
+    const cStart = Math.max(startMin, timeStringToMinutes(c.start));
+    const cEnd = Math.min(endMin, timeStringToMinutes(c.end));
+
+    if (cStart > cur) {
+      const dur = cStart - cur;
+      timeline.push({
+        type: 'vacant',
+        start: minutesToTimeString(cur),
+        end: minutesToTimeString(cStart),
+        durationMinutes: dur,
+        label: `Vacant (${dur} minutes)`,
+      });
+    }
+
+    if (cEnd > cStart) {
+      const dur = cEnd - cStart;
+      timeline.push({
+        type: 'class',
+        start: c.start,
+        end: c.end,
+        durationMinutes: dur,
+        label: c.class,
+        rawClass: c,
+      });
+    }
+
+    cur = Math.max(cur, cEnd);
+  }
+
+  if (cur < endMin) {
+    const dur = endMin - cur;
+    timeline.push({
+      type: 'vacant',
+      start: minutesToTimeString(cur),
+      end: minutesToTimeString(endMin),
+      durationMinutes: dur,
+      label: `Vacant (${dur} minutes)`,
+    });
+  }
+
+  return timeline;
+}
+
+/**
+ * Checks if a time slot (HH:MM to HH:MM) is currently active at a given HH:MM time.
+ */
+export function isSlotActiveNow(
+  slot: { start: string; end: string },
+  timeStr: string,
+): boolean {
+  const targetMin = timeStringToMinutes(timeStr);
+  const sMin = timeStringToMinutes(slot.start);
+  const eMin = timeStringToMinutes(slot.end);
+  return targetMin >= sMin && targetMin < eMin;
+}
+
+/**
  * Checks if a specific room is currently free at a given HH:MM time on that day.
  */
 export function isRoomFreeAtTime(freeSlots: FreeTimeSlot[], timeStr: string): boolean {
@@ -243,6 +362,7 @@ export function computeDayRoomStatuses(
     const room = parseRoomInfo(name);
     const classes = dayClassesMap[name] || [];
     const freeSlots = calculateFreeSlots(classes);
+    const timeline = calculateUnifiedTimeline(classes);
     const totalClassMinutes = classes.reduce((sum, c) => {
       const dur = timeStringToMinutes(c.end) - timeStringToMinutes(c.start);
       return sum + (dur > 0 ? dur : 0);
@@ -253,6 +373,7 @@ export function computeDayRoomStatuses(
       room,
       classes,
       freeSlots,
+      timeline,
       totalFreeMinutes,
       totalClassMinutes,
       isCompletelyFree: classes.length === 0,

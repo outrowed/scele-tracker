@@ -4,10 +4,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import {
   calculateFreeSlots,
+  calculateUnifiedTimeline,
   computeDayRoomStatuses,
   extractRoomCode,
   getCurrentOccupancy,
   getWeekdayIdFromDate,
+  isSlotActiveNow,
   minutesToTimeString,
   parseRoomInfo,
   timeStringToMinutes,
@@ -142,6 +144,79 @@ describe('Room schedule helper utilities', () => {
     expect(occ16.isFreeNow).toBe(true);
     expect(occ16.nextEvent).toBeUndefined();
   });
+
+  it('calculates a chronologically unified timeline alternating between vacant and class slots', () => {
+    const classes: RawClassSlot[] = [
+      { start: '10:00', end: '10:50', class: 'PBM' },
+      { start: '14:00', end: '14:50', class: 'RPL B' },
+      { start: '15:00', end: '16:40', class: 'MPPI B' },
+    ];
+
+    const timeline = calculateUnifiedTimeline(classes, '08:00', '18:00');
+    expect(timeline).toEqual([
+      {
+        type: 'vacant',
+        start: '08:00',
+        end: '10:00',
+        durationMinutes: 120,
+        label: 'Vacant (120 minutes)',
+      },
+      {
+        type: 'class',
+        start: '10:00',
+        end: '10:50',
+        durationMinutes: 50,
+        label: 'PBM',
+        rawClass: classes[0],
+      },
+      {
+        type: 'vacant',
+        start: '10:50',
+        end: '14:00',
+        durationMinutes: 190,
+        label: 'Vacant (190 minutes)',
+      },
+      {
+        type: 'class',
+        start: '14:00',
+        end: '14:50',
+        durationMinutes: 50,
+        label: 'RPL B',
+        rawClass: classes[1],
+      },
+      {
+        type: 'vacant',
+        start: '14:50',
+        end: '15:00',
+        durationMinutes: 10,
+        label: 'Vacant (10 minutes)',
+      },
+      {
+        type: 'class',
+        start: '15:00',
+        end: '16:40',
+        durationMinutes: 100,
+        label: 'MPPI B',
+        rawClass: classes[2],
+      },
+      {
+        type: 'vacant',
+        start: '16:40',
+        end: '18:00',
+        durationMinutes: 80,
+        label: 'Vacant (80 minutes)',
+      },
+    ]);
+  });
+
+  it('determines if a timeline slot is active now', () => {
+    const slot = { start: '10:00', end: '10:50' };
+    expect(isSlotActiveNow(slot, '09:59')).toBe(false);
+    expect(isSlotActiveNow(slot, '10:00')).toBe(true);
+    expect(isSlotActiveNow(slot, '10:25')).toBe(true);
+    expect(isSlotActiveNow(slot, '10:50')).toBe(false);
+    expect(isSlotActiveNow(slot, '11:00')).toBe(false);
+  });
 });
 
 describe('FreeRoomsPage component', () => {
@@ -174,12 +249,26 @@ describe('FreeRoomsPage component', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { level: 1, name: /Backrooms/i })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Backrooms/i }),
+    ).toBeTruthy();
     expect(await screen.findByText('A1.09')).toBeTruthy();
     expect(screen.getByText('Gedung Baru')).toBeTruthy();
 
     // Verify weekday tabs are rendered
-    expect(screen.getByRole('tab', { name: /Monday/i })).toBeTruthy();
+    const mondayTab = screen.getByRole('tab', { name: /Monday/i });
+    expect(mondayTab).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Tuesday/i })).toBeTruthy();
+
+    // Click Monday tab to view schedule with classes
+    fireEvent.click(mondayTab);
+
+    // Verify unified schedule timeline renders
+    expect(screen.getByText('Schedule timeline:')).toBeTruthy();
+    expect(screen.getByText('Sistem Operasi B')).toBeTruthy();
+    expect(screen.getByText('Vacant (120 minutes)')).toBeTruthy();
+
+    // Verify live Jakarta clock presence in header
+    expect(screen.getByText('WIB')).toBeTruthy();
   });
 });
