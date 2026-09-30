@@ -1,16 +1,13 @@
 import {
   ArrowRight,
-  BookOpen,
-  Calendar,
   CheckCircle2,
-  Clock3,
+  ChevronDown,
   Layers3,
-  Lock,
+  ListChecks,
+  Search,
   Sparkles,
-  Timer,
-  Zap,
 } from 'lucide-react';
-import { SectionKicker } from '../components/Typography';
+import { LandingShowcases } from '../components/LandingShowcases';
 import { ButtonLink } from '../components/Button';
 
 export default function LandingPage() {
@@ -53,7 +50,7 @@ export default function LandingPage() {
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 size={15} className="text-teal-600 dark:text-teal-300" />{' '}
-            Real-time SCELE sync
+            Connected to SCELE
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 size={15} className="text-teal-600 dark:text-teal-300" /> Mobile
@@ -68,7 +65,7 @@ export default function LandingPage() {
           {/* Header controls matching real WeekBar */}
           <div className="border-b border-slate-200 dark:border-slate-600 bg-slate-50/75 dark:bg-slate-700 px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 md:text-lg">
                   Weekly Schedule
                 </h2>
@@ -76,13 +73,12 @@ export default function LandingPage() {
                   21 Sep – 27 Sep 2026
                 </span>
               </div>
-              <span className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 shadow-2xs">
-                Today
+              <span className="rounded-full bg-teal-50 dark:bg-teal-950 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-200 border border-teal-200/80 dark:border-teal-800/80">
+                Sunday (Today)
               </span>
             </div>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              Bars span opening to closing/due date, inclusive. Arrows indicate
-              continuation outside this week.
+              Illustrative preview · Sample activities, not live student data.
             </p>
           </div>
 
@@ -103,16 +99,22 @@ export default function LandingPage() {
                   ].map((d) => (
                     <div
                       key={d.day}
-                      className={`flex items-center justify-between px-3 py-2.5 font-semibold ${
+                      className={`relative flex items-center justify-between px-3 py-2.5 font-semibold ${
                         d.isToday
-                          ? 'bg-teal-50/80 dark:bg-teal-950/80 text-teal-900 dark:text-teal-100'
+                          ? 'bg-teal-100/90 dark:bg-teal-900/90 text-teal-950 dark:text-teal-100 font-bold'
                           : 'bg-slate-50/60 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                       }`}
                     >
+                      {d.isToday && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-x-0 top-0 h-1 bg-teal-600"
+                        />
+                      )}
                       <span
                         className={
                           d.isToday
-                            ? 'text-teal-900 dark:text-teal-100 font-bold'
+                            ? 'text-teal-950 dark:text-teal-100 font-bold'
                             : 'text-slate-600 dark:text-slate-300'
                         }
                       >
@@ -121,7 +123,7 @@ export default function LandingPage() {
                       <span
                         className={
                           d.isToday
-                            ? 'text-teal-800 dark:text-teal-200 font-bold'
+                            ? 'text-teal-900 dark:text-teal-100 font-bold'
                             : 'text-slate-600 dark:text-slate-300'
                         }
                       >
@@ -131,42 +133,69 @@ export default function LandingPage() {
                   ))}
                 </div>
 
-                {/* Week Lanes Grid */}
-                <div
-                  className="relative grid grid-cols-7 gap-y-2 py-3 px-1"
-                  style={{ gridTemplateRows: 'repeat(3, 34px)' }}
-                >
-                  {/* Activity Bar 1: Quiz */}
+                {/* Week Lanes Grid with Column Dividers and TODAY Wash */}
+                <div className="relative">
+                  {/* Vertical day columns */}
                   <div
-                    className="flex min-w-0 items-center gap-1.5 rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-2 text-left text-xs font-medium text-blue-900 dark:text-blue-100 mx-1"
-                    style={{ gridColumn: '2 / 4', gridRow: 1 }}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 grid grid-cols-7 divide-x divide-slate-200 dark:divide-slate-700 select-none"
                   >
-                    <span className="truncate">Kuis Mingguan 04</span>
-                    <span className="hidden sm:inline text-[10px] opacity-75 truncate">
-                      · Sistem Operasi
-                    </span>
+                    {[21, 22, 23, 24, 25, 26, 27].map((num) => (
+                      <div
+                        key={num}
+                        className={`flex items-center justify-center transition ${
+                          num === 27 ? 'bg-teal-100/25 dark:bg-teal-900/25' : ''
+                        }`}
+                      >
+                        {num === 27 && (
+                          <span className="text-xs md:text-sm font-bold tracking-widest text-teal-800/20 dark:text-teal-200/20 uppercase select-none">
+                            TODAY
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Activity Bar 2: Assignment continuing across week */}
                   <div
-                    className="flex min-w-0 items-center gap-1.5 rounded-l-md border-y border-l border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 px-2 text-left text-xs font-medium text-emerald-900 dark:text-emerald-100 ml-1"
-                    style={{ gridColumn: '1 / 6', gridRow: 2 }}
+                    className="relative grid grid-cols-7 gap-y-2 py-3 px-1"
+                    style={{ gridTemplateRows: 'repeat(3, 34px)' }}
                   >
-                    <span className="truncate">Tugas Pemrograman 1: Tree Traversal</span>
-                    <span className="hidden sm:inline text-[10px] opacity-75 truncate">
-                      · Struktur Data & Algoritma
-                    </span>
-                  </div>
+                    {/* Activity Bar 1: Quiz Tue-Wed */}
+                    <div
+                      className="flex min-w-0 items-center gap-1.5 rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-2 text-left text-xs font-medium text-blue-900 dark:text-blue-100 mx-1 shadow-xs"
+                      style={{ gridColumn: '2 / 4', gridRow: 1 }}
+                    >
+                      <span className="truncate font-semibold">Kuis Mingguan 04</span>
+                      <span className="hidden sm:inline text-[10px] opacity-75 truncate">
+                        · Sistem Operasi
+                      </span>
+                    </div>
 
-                  {/* Activity Bar 3: Assignment due Sunday (Today) */}
-                  <div
-                    className="flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 px-2 text-left text-xs font-medium text-emerald-900 dark:text-emerald-100 mx-1"
-                    style={{ gridColumn: '5 / 8', gridRow: 3 }}
-                  >
-                    <span className="truncate">Lab 03: Logic & Proofs</span>
-                    <span className="hidden sm:inline text-[10px] opacity-75 truncate">
-                      · Matematika Diskret 1
-                    </span>
+                    {/* Activity Bar 2: Assignment Mon-Fri (fully closed, rounded, and bordered) */}
+                    <div
+                      className="flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 px-2 text-left text-xs font-medium text-emerald-900 dark:text-emerald-100 mx-1 shadow-xs"
+                      style={{ gridColumn: '1 / 6', gridRow: 2 }}
+                    >
+                      <span className="truncate font-semibold">
+                        Tugas Pemrograman 1: Tree Traversal
+                      </span>
+                      <span className="hidden sm:inline text-[10px] opacity-75 truncate">
+                        · Struktur Data & Algoritma
+                      </span>
+                    </div>
+
+                    {/* Activity Bar 3: Assignment Fri-Sun due Sunday */}
+                    <div
+                      className="flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 px-2 text-left text-xs font-medium text-emerald-900 dark:text-emerald-100 mx-1 shadow-xs"
+                      style={{ gridColumn: '5 / 8', gridRow: 3 }}
+                    >
+                      <span className="truncate font-semibold">
+                        Lab 03: Logic & Proofs
+                      </span>
+                      <span className="hidden sm:inline text-[10px] opacity-75 truncate">
+                        · Matematika Diskret 1
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -285,102 +314,209 @@ export default function LandingPage() {
       <section id="features" className="mx-auto w-full max-w-[1280px] px-5 md:px-10">
         <div className="text-center">
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-4xl">
-            Everything you need to navigate your coursework
+            Your semester, without the tab shuffle.
           </h2>
           <p className="mx-auto max-w-2xl text-base text-slate-600 dark:text-slate-300">
-            Designed specifically around how CSUI courses publish assignments and quizzes
-            on SCELE.
+            Your courses, activities, and deadlines belong together. Get a clear overview
+            without opening every course page just to figure out what is next.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Feature 1 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
-              <Layers3 size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 1
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
-
-          {/* Feature 2 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-              <Clock3 size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 2
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-              <Calendar size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 3
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
-              <BookOpen size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 4
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
-
-          {/* Feature 5 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
-              <Zap size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 5
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
-
-          {/* Feature 6 */}
-          <div className="flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs transition hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
-              <Lock size={24} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Lorem ipsum 6
-            </h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-          </div>
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {[
+            {
+              icon: Layers3,
+              title: 'One feed. All your coursework.',
+              description:
+                'Assignments and quizzes from your enrolled courses, together in a single activity feed. Spend less time finding the work and more time getting it done.',
+            },
+            {
+              icon: Search,
+              title: 'Find your focus',
+              description:
+                'Search by activity or course, then narrow the view with filters. A crowded semester becomes a manageable list of what matters to you.',
+            },
+            {
+              icon: ListChecks,
+              title: 'Keep the details together',
+              description:
+                'See dates and activity status alongside the course they belong to, with links back to SCELE when you are ready to act.',
+            },
+          ].map(({ icon: Icon, title, description }) => (
+            <article
+              key={title}
+              className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+            >
+              <Icon
+                size={22}
+                className="mb-5 text-teal-700 dark:text-teal-300"
+                aria-hidden="true"
+              />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {description}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* 4. Bottom CTA Callout */}
+      {/* Feature Showcases: Authentic summarized UIs */}
+      <LandingShowcases />
+
+      {/* 4. Getting Started Section */}
+      <section
+        className="mx-auto w-full max-w-[1100px] px-5 md:px-10"
+        aria-labelledby="getting-started"
+      >
+        <h2
+          id="getting-started"
+          className="text-center text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
+        >
+          Less setup. More clarity.
+        </h2>
+        <ol className="mt-8 grid gap-6 md:grid-cols-3">
+          {[
+            [
+              'Sign in with UI SSO',
+              'Use your Universitas Indonesia account to get started.',
+            ],
+            [
+              'Let your courses come together',
+              'Your enrolled courses and their activities are brought into one place. The first sync may take a moment.',
+            ],
+            [
+              'Make a plan for the week',
+              'Check the feed, look ahead in the calendar, and open SCELE when it is time to submit.',
+            ],
+          ].map(([title, text], index) => (
+            <li
+              key={title}
+              className="border-t border-slate-200 pt-5 dark:border-slate-700"
+            >
+              <span className="text-sm font-bold text-teal-700 dark:text-teal-300">
+                0{index + 1}
+              </span>
+              <h3 className="mt-3 font-semibold text-slate-900 dark:text-slate-100">
+                {title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {text}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* 5. Comprehensive Frequently Asked Questions */}
+      <section
+        className="mx-auto w-full max-w-[1100px] px-5 md:px-10"
+        aria-labelledby="faq-heading"
+      >
+        <div className="text-center">
+          <h2
+            id="faq-heading"
+            className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
+          >
+            Frequently Asked Questions
+          </h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            Answers to common questions about features, sync behavior, privacy, and
+            security.
+          </p>
+        </div>
+
+        <div className="mt-8 space-y-4">
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>Does this replace SCELE?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              No. This is your personal planning companion, not an official replacement
+              for SCELE. You will still submit assignments, participate in discussion
+              forums, and take quizzes directly on SCELE. Each activity card includes
+              direct links to the upstream SCELE page so you can verify instructions and
+              submit your work.
+            </p>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>How does it work behind the scenes?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              When you sign in using Universitas Indonesia SSO (CAS), the application
+              authenticates your Moodle session upstream. It discovers your active course
+              enrollments and collects activity schedules, opening windows, and due dates
+              across calendar events. A persistent local cache stores these definitions to
+              serve subsequent requests instantly using stale-while-revalidate.
+            </p>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>How is my privacy and personal data protected?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              Your UI SSO credentials and passwords are never stored on our servers.
+              Authentication produces a secure, HTTP-only session token. While general
+              course structures and public assignment dates can be cached, personal
+              completion evidence and student submission status are isolated per user
+              account and are never visible or shared across other students.
+            </p>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>What key features are available?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              The tracker includes an <strong>Activity Feed</strong> with multi-course
+              weekly schedule lanes, a full-month <strong>Course Calendar</strong> with
+              activity range overlays, unified search and faceted filtering (by course,
+              type, and urgency), automatic system and manual <strong>Dark Mode</strong>,
+              and <strong>Backrooms</strong>: a timetable-driven vacant classroom and lab
+              finder across Fasilkom buildings.
+            </p>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>How often is my coursework data synced?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              Coursework is checked whenever you open or view the application. If
+              coursework data was checked within the past hour, saved cache records are
+              served immediately to keep the UI fast. Background revalidation updates any
+              newly posted assignments or altered due dates without freezing your browser,
+              and you can trigger a manual sync at any time via the Refresh button.
+            </p>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+            <summary className="cursor-pointer font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-3">
+              <span>How does the Backrooms room finder work?</span>
+              <ChevronDown size={16} className="text-slate-400 shrink-0" />
+            </summary>
+            <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              Backrooms syncs Fasilkom academic room schedules into a persistent database
+              every three days. It calculates real-time room vacancy using Asia/Jakarta
+              time, showing whether a classroom or computer lab is currently free, when
+              the next class begins, and full daily time slots across Gedung Baru and
+              Gedung Lama.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      {/* 6. Bottom CTA Callout */}
       <section className="mx-auto w-full max-w-[1280px] px-5 md:px-10">
         <div className="relative overflow-hidden rounded-3xl border border-teal-200 dark:border-teal-800 bg-gradient-to-br from-teal-700 to-teal-900 px-6 py-12 text-center text-white shadow-xl shadow-teal-900/10 md:px-12 md:py-16">
           <div className="relative z-10 mx-auto max-w-2xl">
@@ -389,7 +525,7 @@ export default function LandingPage() {
             </h2>
             <p className="mt-3 text-base text-teal-100 md:text-lg">
               Sign in with your Universitas Indonesia SSO credentials to access your
-              courses, deadlines, and schedule immediately.
+              courses, deadlines, and schedule in one place.
             </p>
             <div className="mt-8 flex justify-center">
               <ButtonLink
