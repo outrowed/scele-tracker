@@ -263,8 +263,7 @@ describe('FreeRoomsPage component', () => {
     // Click Monday tab to view schedule with classes
     fireEvent.click(mondayTab);
 
-    // Verify unified schedule timeline renders
-    expect(screen.getByText('Schedule timeline:')).toBeTruthy();
+    // Verify unified schedule timeline renders classes and vacant slots
     expect(screen.getByText('Sistem Operasi B')).toBeTruthy();
     expect(screen.getByText('Vacant (120 minutes)')).toBeTruthy();
 

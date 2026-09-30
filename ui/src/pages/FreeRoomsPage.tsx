@@ -745,107 +745,77 @@ export default function FreeRoomsPage() {
                           <div className="flex flex-1 flex-col justify-between">
                             {/* Unified Schedule Timeline (combining vacant slots and scheduled classes chronologically) */}
                             <div className="mt-3.5">
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
-                                  <span className="flex items-center gap-1.5">
-                                    <Clock
-                                      size={13}
-                                      className="text-teal-700 dark:text-teal-400"
-                                    />
-                                    Schedule timeline:
-                                  </span>
-                                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                                      {freeSlots.length} free slot
-                                      {freeSlots.length === 1 ? '' : 's'}
-                                    </span>
-                                    {classes.length > 0 && (
-                                      <>
-                                        {' '}
-                                        ·{' '}
-                                        <span className="font-semibold text-slate-700 dark:text-slate-200">
-                                          {classes.length} class
-                                          {classes.length === 1 ? '' : 'es'}
-                                        </span>
-                                      </>
-                                    )}
-                                  </span>
-                                </div>
+                              {/* Chronological list of vacant and scheduled class slots */}
+                              <div className="flex flex-col gap-1 text-[11px]">
+                                {timeline.map((slot, idx) => {
+                                  const isActive =
+                                    isViewingToday &&
+                                    isSlotActiveNow(slot, currentTime.timeString);
+                                  const isVacant = slot.type === 'vacant';
 
-                                {/* Chronological list of vacant and scheduled class slots */}
-                                <div className="flex flex-col gap-1 text-[11px]">
-                                  {timeline.map((slot, idx) => {
-                                    const isActive =
-                                      isViewingToday &&
-                                      isSlotActiveNow(slot, currentTime.timeString);
-                                    const isVacant = slot.type === 'vacant';
-
-                                    return (
-                                      <div
-                                        key={idx}
-                                        className={`flex items-center justify-between rounded-lg px-2 py-1 transition-colors ${
-                                          isActive
-                                            ? isVacant
-                                              ? 'bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 shadow-xs'
-                                              : 'bg-rose-50/90 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 shadow-xs'
-                                            : 'border-b border-slate-100 dark:border-slate-700/50 last:border-b-0'
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                                          {isActive && (
-                                            <span
-                                              className={`h-2 w-2 rounded-full shrink-0 animate-pulse ${
-                                                isVacant
-                                                  ? 'bg-emerald-500'
-                                                  : 'bg-rose-500'
-                                              }`}
-                                            />
-                                          )}
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`flex items-center justify-between rounded-lg px-2 py-1 transition-colors ${
+                                        isActive
+                                          ? isVacant
+                                            ? 'bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 shadow-xs'
+                                            : 'bg-rose-50/90 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 shadow-xs'
+                                          : 'border-b border-slate-100 dark:border-slate-700/50 last:border-b-0'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                                        {isActive && (
                                           <span
-                                            className={`truncate ${
-                                              isActive
-                                                ? isVacant
-                                                  ? 'text-emerald-900 dark:text-emerald-100 font-semibold'
-                                                  : 'text-rose-900 dark:text-rose-100 font-semibold'
-                                                : isVacant
-                                                  ? 'font-medium text-emerald-700 dark:text-emerald-400'
-                                                  : 'font-medium text-slate-800 dark:text-slate-100'
+                                            className={`h-2 w-2 rounded-full shrink-0 animate-pulse ${
+                                              isVacant ? 'bg-emerald-500' : 'bg-rose-500'
                                             }`}
-                                            title={
-                                              isVacant
-                                                ? slot.label
-                                                : slot.rawClass?.class || slot.label
-                                            }
-                                          >
-                                            {slot.label}
-                                          </span>
-                                          {isActive && (
-                                            <span
-                                              className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 leading-none ${
-                                                isVacant
-                                                  ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                                                  : 'bg-rose-600 text-white dark:bg-rose-500'
-                                              }`}
-                                            >
-                                              Now
-                                            </span>
-                                          )}
-                                        </div>
+                                          />
+                                        )}
                                         <span
-                                          className={`font-mono whitespace-nowrap shrink-0 ${
+                                          className={`truncate ${
                                             isActive
                                               ? isVacant
-                                                ? 'text-emerald-800 dark:text-emerald-200 font-bold'
-                                                : 'text-rose-800 dark:text-rose-200 font-bold'
-                                              : 'text-slate-500 dark:text-slate-400'
+                                                ? 'text-emerald-900 dark:text-emerald-100 font-semibold'
+                                                : 'text-rose-900 dark:text-rose-100 font-semibold'
+                                              : isVacant
+                                                ? 'font-medium text-emerald-700 dark:text-emerald-400'
+                                                : 'font-medium text-slate-800 dark:text-slate-100'
                                           }`}
+                                          title={
+                                            isVacant
+                                              ? slot.label
+                                              : slot.rawClass?.class || slot.label
+                                          }
                                         >
-                                          {slot.start} – {slot.end}
+                                          {slot.label}
                                         </span>
+                                        {isActive && (
+                                          <span
+                                            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 leading-none ${
+                                              isVacant
+                                                ? 'bg-emerald-600 text-white dark:bg-emerald-500'
+                                                : 'bg-rose-600 text-white dark:bg-rose-500'
+                                            }`}
+                                          >
+                                            Now
+                                          </span>
+                                        )}
                                       </div>
-                                    );
-                                  })}
-                                </div>
+                                      <span
+                                        className={`font-mono whitespace-nowrap shrink-0 ${
+                                          isActive
+                                            ? isVacant
+                                              ? 'text-emerald-800 dark:text-emerald-200 font-bold'
+                                              : 'text-rose-800 dark:text-rose-200 font-bold'
+                                            : 'text-slate-500 dark:text-slate-400'
+                                        }`}
+                                      >
+                                        {slot.start} – {slot.end}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           </div>
