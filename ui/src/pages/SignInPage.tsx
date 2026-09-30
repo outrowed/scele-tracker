@@ -55,9 +55,10 @@ export default function SignInPage() {
               <Info size={15} />
             </button>
             <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-72 -translate-x-1/2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900 px-3.5 py-2.5 text-left text-xs leading-relaxed text-slate-100 shadow-xl opacity-0 transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto">
-              Your credentials are used to retrieve your basic profile and courses from
-              SCELE to create your personalized activity feed, and are required for the
-              app to work.
+              Your credentials are used to retrieve your profile and courses from
+              SCELE, keep your session active across visits, and connect integrated UI
+              services. Credentials are encrypted on the server for the duration of
+              your session and permanently deleted when you sign out.
               <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-900" />
             </div>
           </div>
@@ -134,7 +135,8 @@ export default function SignInPage() {
         </form>
 
         <p className="mt-5 text-center text-xs leading-6 text-slate-500 dark:text-slate-400">
-          Your password is sent securely and never stored.
+          Your credentials are encrypted on the server to keep your session active
+          and are deleted when you sign out.
         </p>
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-700 pt-4 text-center">

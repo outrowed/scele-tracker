@@ -3,9 +3,10 @@ import express, { Router, type RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import { XMLParser } from 'fast-xml-parser';
 import { roleFor } from './roles.js';
-import { settings } from './config.js';
+import { settings, SESSION_MAX_AGE_MS } from './config.js';
 import { casFormLogin } from './cas.js';
 import { formatAcademicInfo, deriveProdi, deriveClassYear } from './student.js';
+import { getSessionStore } from './sessions.js';
 import {
   setUserMoodleSession,
   loginMoodleUser,
@@ -22,8 +23,47 @@ const options = {
   path: '/',
 };
 
-export function sessionUser(token: unknown) {
-  if (typeof token !== 'string') return null;
+export type SessionUserResult = {
+  username: string;
+  fullname: string;
+  prodi: string;
+  angkatan: string;
+  kd_org?: string;
+  academicInfo: string;
+  sessionId?: string;
+};
+
+/**
+ * Validates session credentials or token from request cookie.
+ * Supports both:
+ * 1. Opaque SQLite session ID (from long-lived login with encrypted credentials)
+ * 2. Legacy/stateless JWT token (for backward compatibility and test mock tokens)
+ */
+export function sessionUser(token: unknown): SessionUserResult | null {
+  if (typeof token !== 'string' || !token) return null;
+
+  // 1. Check if token is an opaque SQLite session ID (64-char hex string)
+  if (/^[a-f0-9]{64}$/.test(token)) {
+    try {
+      const store = getSessionStore();
+      const rec = store.get(token);
+      if (rec && !store.isLocked(rec)) {
+        return {
+          username: rec.username,
+          fullname: rec.fullname,
+          prodi: rec.prodi,
+          angkatan: rec.angkatan,
+          kd_org: rec.kd_org || undefined,
+          academicInfo: rec.academicInfo,
+          sessionId: rec.id,
+        };
+      }
+    } catch {
+      // Store unavailable or errored; fall through
+    }
+  }
+
+  // 2. Fall back to JWT validation (supports test tokens & stateless fallback)
   try {
     const value = jwt.verify(token, settings.secret, {
       algorithms: ['HS256'],
@@ -49,6 +89,7 @@ export function sessionUser(token: unknown) {
       angkatan: angkatan || deriveClassYear(value.username) || '2026',
       kd_org,
       academicInfo,
+      sessionId: typeof (value as any).sid === 'string' ? (value as any).sid : undefined,
     };
   } catch {
     return null;
@@ -116,18 +157,59 @@ auth.get('/me', async (req, res) => {
     res.json({ user: null });
     return;
   }
-  const moodle = getUserMoodleSession(user.username);
+
+  // Obtain or renew the user's active SCELE Moodle session
+  let moodle = getUserMoodleSession(user.username);
+  if (!moodle) {
+    // If we have an opaque session with encrypted credentials, auto-renew on demand
+    const sessionId = user.sessionId || (typeof req.cookies[cookie] === 'string' && /^[a-f0-9]{64}$/.test(req.cookies[cookie]) ? req.cookies[cookie] : undefined);
+    if (sessionId) {
+      try {
+        const store = getSessionStore();
+        const creds = store.getCredentials(sessionId);
+        if (creds) {
+          moodle = await loginMoodleUser(creds.username, creds.password);
+          setUserMoodleSession(creds.username, moodle);
+          store.clearAuthFailures(sessionId);
+        }
+      } catch {
+        // Renewal failed or upstream unavailable
+      }
+    }
+  }
+
   if (!moodle) {
     res.clearCookie(cookie, options);
     res.json({ user: null });
     return;
   }
+
   try {
     await moodle.checkValid();
     res.json({ user: { ...user, role: await roleFor(user.username) } });
   } catch (error) {
     if (error instanceof MoodleSessionExpired) {
       clearUserMoodleSession(user.username);
+      // Try one re-login if credentials are stored
+      const sessionId = user.sessionId || (typeof req.cookies[cookie] === 'string' && /^[a-f0-9]{64}$/.test(req.cookies[cookie]) ? req.cookies[cookie] : undefined);
+      if (sessionId) {
+        try {
+          const store = getSessionStore();
+          const creds = store.getCredentials(sessionId);
+          if (creds) {
+            const freshSession = await loginMoodleUser(creds.username, creds.password);
+            setUserMoodleSession(creds.username, freshSession);
+            store.clearAuthFailures(sessionId);
+            res.json({ user: { ...user, role: await roleFor(user.username) } });
+            return;
+          }
+        } catch (renewErr) {
+          if (renewErr instanceof Error && /auth|password|credentials/i.test(renewErr.message)) {
+            const store = getSessionStore();
+            store.recordAuthFailure(sessionId);
+          }
+        }
+      }
       res.clearCookie(cookie, options);
       res.json({ user: null });
       return;
@@ -138,7 +220,8 @@ auth.get('/me', async (req, res) => {
   }
 });
 
-// Single-form login proxy: authenticates with both UI SSO CAS and SCELE/Moodle
+// Single-form login proxy: authenticates with both UI SSO CAS and SCELE Moodle,
+// and saves encrypted credentials in server-side storage to enable 30-day session renewal.
 auth.post('/login', sameOrigin, express.json(), async (req, res) => {
   const { username, password } = req.body || {};
   if (
@@ -160,18 +243,15 @@ auth.post('/login', sameOrigin, express.json(), async (req, res) => {
     const identity = await casFormLogin(cleanUser, password);
 
     // 2. Authenticate with SCELE Moodle using the same credentials
-    // Acquires session cookie or token so user has personalized access
     const moodleSession = await loginMoodleUser(cleanUser, password);
     setUserMoodleSession(identity.username, moodleSession);
 
-    // 3. Issue session token (credentials are not retained in memory or disk)
-    const token = jwt.sign(identity, settings.secret, {
-      algorithm: 'HS256',
-      expiresIn: '8h',
-      audience: 'scele-tracker',
-      issuer: settings.origin,
-    });
-    res.cookie(cookie, token, { ...options, maxAge: 8 * 60 * 60_000 });
+    // 3. Store encrypted credentials in server-side SQLite session store for long-lived renewal (30 days)
+    const store = getSessionStore();
+    const sessionId = store.create(identity, password);
+
+    // 4. Issue session cookie set to 30-day lifetime
+    res.cookie(cookie, sessionId, { ...options, maxAge: SESSION_MAX_AGE_MS });
     res.json({
       user: {
         ...identity,
@@ -224,6 +304,7 @@ auth.get('/cas/callback', async (req, res) => {
     );
     if (!response.ok) throw new Error('CAS unavailable');
     const user = parseIdentity(await response.text());
+    // For CAS redirect callback without password, use fallback JWT token
     const token = jwt.sign(user, settings.secret, {
       algorithm: 'HS256',
       expiresIn: '8h',
@@ -239,9 +320,24 @@ auth.get('/cas/callback', async (req, res) => {
 });
 
 auth.post('/logout', sameOrigin, (req, res) => {
-  const user = sessionUser(req.cookies[cookie]);
+  const tokenVal = req.cookies[cookie];
+  const user = sessionUser(tokenVal);
   if (user) {
     clearUserMoodleSession(user.username);
+  }
+  // If this was a stored session, permanently delete it and its encrypted credentials
+  if (typeof tokenVal === 'string' && /^[a-f0-9]{64}$/.test(tokenVal)) {
+    try {
+      getSessionStore().delete(tokenVal);
+    } catch {
+      // Ignore cleanup error on logout
+    }
+  } else if (user?.sessionId) {
+    try {
+      getSessionStore().delete(user.sessionId);
+    } catch {
+      // Ignore
+    }
   }
   res.clearCookie(cookie, options);
   res.json({ ok: true });

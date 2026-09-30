@@ -48,8 +48,8 @@ export default function LandingPage() {
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-medium text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
-            <CheckCircle2 size={15} className="text-teal-600 dark:text-teal-300" /> Zero
-            password storage
+            <CheckCircle2 size={15} className="text-teal-600 dark:text-teal-300" />{' '}
+            Encrypted session security
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 size={15} className="text-teal-600 dark:text-teal-300" />{' '}
