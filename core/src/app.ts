@@ -8,10 +8,15 @@ import { auth, requireSession, sessionUser } from './tracker/auth.js';
 import { personalSnapshot } from './tracker/personal.js';
 import { clearUserMoodleSession, MoodleSessionExpired } from './tracker/moodle.js';
 import { createTracker } from './tracker/store.js';
+import { defaultRoomTracker, type createRoomTracker } from './tracker/rooms.js';
 
 export function createApp(
   tracker: Pick<ReturnType<typeof createTracker>, 'get'> = createTracker(),
   getPersonal = personalSnapshot,
+  roomTracker: Pick<
+    ReturnType<typeof createRoomTracker>,
+    'getSchedule'
+  > = defaultRoomTracker,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -115,40 +120,12 @@ export function createApp(
     }
   });
 
-  // Proxy Fasilkom room schedules from https://csui.cesilia.dev/ruangan/schedule/<day>.json
-  // Cached in memory for 10 minutes to maintain fast response times
-  let roomScheduleCache: { data: Record<string, any>; fetchedAt: number } | null = null;
+  // Room schedules backed by persistent SQLite cache (scheduled refresh every 3 days)
   app.get('/api/rooms/schedule', async (_req, res) => {
-    const CACHE_TTL_MS = 10 * 60 * 1000;
-    const now = Date.now();
-    if (roomScheduleCache && now - roomScheduleCache.fetchedAt < CACHE_TTL_MS) {
-      res.json(roomScheduleCache.data);
-      return;
-    }
-
-    const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat'];
     try {
-      const results = await Promise.all(
-        days.map(async (d) => {
-          const resp = await fetch(`https://csui.cesilia.dev/ruangan/schedule/${d}.json`);
-          if (!resp.ok)
-            throw new Error(`Failed to fetch schedule for ${d}: ${resp.status}`);
-          return { day: d, data: await resp.json() };
-        }),
-      );
-      const schedule: Record<string, any> = {};
-      for (const { day, data } of results) {
-        schedule[day] = data;
-      }
-      const payload = { schedule, fetchedAt: now };
-      roomScheduleCache = { data: payload, fetchedAt: now };
-      res.json(payload);
+      const data = await roomTracker.getSchedule();
+      res.json(data);
     } catch (err) {
-      if (roomScheduleCache) {
-        // Fallback to stale cache if upstream is temporarily down
-        res.json(roomScheduleCache.data);
-        return;
-      }
       res
         .status(502)
         .json({ error: (err as Error).message || 'Unable to fetch room schedules.' });

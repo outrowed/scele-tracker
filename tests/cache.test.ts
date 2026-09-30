@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTracker, FRESH_MS } from '../core/src/tracker/store';
 import { openCache } from '../core/src/tracker/cache';
+import { createRoomTracker, THREE_DAYS_MS } from '../core/src/tracker/rooms';
 
 it('keeps shared activity definitions separate from user enrollment and state across reopen', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tracker-normalized-'));
@@ -186,5 +187,99 @@ it('retains old activities on partial/failing sources and removes retired source
     expect((await tracker.get()).activities).toEqual([]);
   } finally {
     await tracker.close();
+  }
+});
+
+it('persists room schedule in SQLite, serves cached data without upstream calls, and respects 3-day refresh', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'room-cache-'));
+  const path = join(directory, 'cache.sqlite');
+  let time = 1_000_000;
+  let upstreamCalls = 0;
+  let failUpstream = false;
+
+  const sampleUpstream = {
+    senin: {
+      'A1.09 (Ged Baru)': [{ start: '10:00', end: '11:40', class: 'Sistem Operasi B' }],
+    },
+    selasa: {
+      'Lab.1105 --- PC 24 (Gd Lama)': [],
+    },
+  };
+
+  const fetchSchedule = async () => {
+    upstreamCalls++;
+    if (failUpstream) throw new Error('Upstream API network error');
+    return sampleUpstream;
+  };
+
+  let roomTracker = createRoomTracker({
+    path,
+    now: () => time,
+    fetchSchedule,
+  });
+
+  try {
+    // 1. Initial cold fetch: calls upstream once and saves to SQLite
+    const initial = await roomTracker.getSchedule();
+    expect(upstreamCalls).toBe(1);
+    expect(initial.schedule.senin['A1.09 (Ged Baru)']).toHaveLength(1);
+    expect(initial.fetchedAt).toBe(1_000_000);
+
+    // 2. Subsequent user reads serve from cache without hitting upstream API
+    const second = await roomTracker.getSchedule();
+    expect(upstreamCalls).toBe(1);
+    expect(second.fetchedAt).toBe(1_000_000);
+
+    // 3. User queries within 3 days (e.g. 2 days later) still serve from cache
+    time += 2 * 24 * 60 * 60 * 1000;
+    const third = await roomTracker.getSchedule();
+    expect(upstreamCalls).toBe(1);
+    expect(third.fetchedAt).toBe(1_000_000);
+    expect(roomTracker.isDue()).toBe(false);
+
+    // 4. Persistence across process restart: reopen cache database
+    roomTracker.close();
+    roomTracker = createRoomTracker({
+      path,
+      now: () => time,
+      fetchSchedule,
+    });
+
+    const persisted = await roomTracker.getSchedule();
+    expect(upstreamCalls).toBe(1); // Still zero additional upstream calls
+    expect(persisted.schedule.senin['A1.09 (Ged Baru)'][0].class).toBe(
+      'Sistem Operasi B',
+    );
+    expect(persisted.schedule.senin['A1.09 (Ged Baru)'][0].startMinute).toBe(600); // 10:00 -> 600 min
+    expect(persisted.schedule.senin['A1.09 (Ged Baru)'][0].endMinute).toBe(700); // 11:40 -> 700 min
+    const rooms = roomTracker.getRooms('senin');
+    expect(rooms).toHaveLength(1);
+    expect(rooms[0].day).toBe(1);
+    expect(rooms[0].dayName).toBe('senin');
+    expect(rooms[0].code).toBe('A1.09');
+    expect(rooms[0].building).toBe('Gedung Baru');
+    expect(rooms[0].roomType).toBe('classroom');
+    expect(rooms[0].isLab).toBe(false);
+    expect(rooms[0].isAuditorium).toBe(false);
+
+    // 5. System refresh after 3 days: triggers upstream fetch
+    time += 24 * 60 * 60 * 1000 + 1; // Now > 3 days since initial fetch
+    expect(roomTracker.isDue()).toBe(true);
+
+    const refreshed = await roomTracker.refresh();
+    expect(upstreamCalls).toBe(2);
+    expect(refreshed.fetchedAt).toBe(time);
+    expect(roomTracker.isDue()).toBe(false);
+
+    // 6. Upstream failure retains last-known good cache snapshot
+    time += THREE_DAYS_MS + 10;
+    failUpstream = true;
+    const fallback = await roomTracker.refresh();
+    expect(upstreamCalls).toBe(3);
+    // Preserves last good data
+    expect(fallback.schedule.senin['A1.09 (Ged Baru)']).toHaveLength(1);
+  } finally {
+    roomTracker.close();
+    await rm(directory, { recursive: true });
   }
 });

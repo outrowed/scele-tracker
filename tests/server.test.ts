@@ -194,6 +194,22 @@ describe('accounts and metadata', () => {
     );
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it('serves room schedules from room tracker cache without error', async () => {
+    const mockRoomTracker = {
+      getSchedule: vi.fn().mockResolvedValue({
+        schedule: {
+          senin: { 'A1.09 (Ged Baru)': [{ start: '10:00', end: '11:40', class: 'OS' }] },
+        },
+        fetchedAt: 123456,
+      }),
+    };
+    const app = createApp(undefined, undefined, mockRoomTracker);
+    const res = await request(app).get('/api/rooms/schedule');
+    expect(res.status).toBe(200);
+    expect(res.body.fetchedAt).toBe(123456);
+    expect(res.body.schedule.senin['A1.09 (Ged Baru)']).toHaveLength(1);
+    expect(mockRoomTracker.getSchedule).toHaveBeenCalledTimes(1);
+  });
 });
 
 it('sends API tokens only in POST bodies with timeout and no redirects', async () => {
